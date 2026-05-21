@@ -43,6 +43,9 @@ val hasReleaseSigningCredentials: Boolean =
         releaseKeyPassword.isNotBlank() &&
         rootProject.file(releaseKeystoreFile).exists()
 
+val appVersionCode = 3
+val appVersionName = "1.1.3"
+
 android {
     namespace = "dev.ambitionsoftware.tymeboxed"
     compileSdk = 36
@@ -52,8 +55,8 @@ android {
         minSdk = 28
         //noinspection EditedTargetSdkVersion
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.2"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

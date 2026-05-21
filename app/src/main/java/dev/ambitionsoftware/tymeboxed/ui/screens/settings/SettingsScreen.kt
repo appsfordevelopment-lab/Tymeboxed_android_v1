@@ -53,7 +53,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import dev.ambitionsoftware.tymeboxed.BuildConfig
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -91,6 +90,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.ambitionsoftware.tymeboxed.admin.DeviceAdminSupport
+import dev.ambitionsoftware.tymeboxed.util.AppInfo
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -559,7 +559,8 @@ private fun AboutCard(
     onBuyDevice: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val versionLabel = "v${BuildConfig.VERSION_NAME}"
+    val context = LocalContext.current
+    val versionLabel = remember(context) { "v${AppInfo.versionName(context)}" }
     SettingsCard(title = "About", elevation = 0.dp) {
         LabelRow(label = "Version", value = versionLabel)
         SettingsCardDivider()
