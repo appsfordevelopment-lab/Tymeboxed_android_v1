@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security policy for Tyme Boxed.
+
+  - Production: no cleartext HTTP at all.
+  - api.tymeboxed.app: TLS only, with a placeholder for SPKI certificate
+    pinning. Pinning is intentionally NOT enforced by default so an
+    accidental cert rotation cannot brick all clients in the field.
+    To enable pinning:
+      1. Generate the leaf + intermediate SPKI pins:
+           openssl s_client -servername api.tymeboxed.app \
+             -connect api.tymeboxed.app:443 < /dev/null 2>/dev/null \
+             | openssl x509 -pubkey -noout \
+             | openssl pkey -pubin -outform DER \
+             | openssl dgst -sha256 -binary | openssl enc -base64
+      2. Replace `REPLACE_WITH_PIN_*` with the values above.
+      3. Move the <pin-set> block out of the XML comment.
+      4. Always include a *backup* pin (e.g. the intermediate CA) so a
+         renewal cannot break the app.
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Production API host. Cleartext is forbidden so anyone running an MITM
+         downgrade attack on a coffee-shop Wi-Fi cannot intercept the request. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.tymeboxed.app</domain>
+
+        <!--
+        <pin-set expiration="2027-01-01">
+            <pin digest="SHA-256">REPLACE_WITH_PIN_LEAF=</pin>
+            <pin digest="SHA-256">REPLACE_WITH_PIN_INTERMEDIATE=</pin>
+        </pin-set>
+        -->
+    </domain-config>
+
+    <!-- Localhost only for debug builds (e.g. running a local API mock). -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+</network-security-config>

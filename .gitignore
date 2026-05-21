@@ -1,0 +1,66 @@
+# =====================================================================
+# Tymeboxed Android — .gitignore
+# Keep secrets, signing material, build output and IDE state out of git.
+# =====================================================================
+
+# ---- Secrets / signing material (NEVER commit) ----------------------
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+release-keystore.jks
+my-release-key.jks
+google-services.json
+keystore.properties
+signing.properties
+**/secrets.properties
+
+# ---- Gradle ---------------------------------------------------------
+.gradle/
+build/
+**/build/
+out/
+captures/
+**/*.iml
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+.gradletasknamecache
+
+# ---- Android Studio / IntelliJ --------------------------------------
+.idea/
+*.iml
+.cxx/
+.navigation/
+local.properties.backup
+proguard/
+
+# ---- Kotlin ---------------------------------------------------------
+.kotlin/
+kotlin-js-store/
+
+# ---- macOS / Windows / Linux junk -----------------------------------
+.DS_Store
+**/.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- Logs / temp ----------------------------------------------------
+*.log
+*.tmp
+*.bak
+.tmp-*/
+hs_err_pid*
+
+# ---- Test / coverage ------------------------------------------------
+.jacoco/
+coverage/
+*.exec
+*.ec
+
+# ---- Misc -----------------------------------------------------------
+node_modules/
+.env
+.env.local

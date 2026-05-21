@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Minimal system-level theme. The real styling lives in Compose (ui/theme/TbTheme.kt);
+    this theme only exists so the manifest has something to point at before Compose takes over.
+-->
+<resources>
+    <style name="Theme.TymeBoxed" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <style name="Theme.TymeBoxed.Splash" parent="Theme.SplashScreen.IconBackground">
+        <!-- Same art/colors as launcher; @drawable/ic_splash_foreground uses extra inset for splash fit. -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.TymeBoxed</item>
+    </style>
+</resources>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Main accessibility service metadata (focus / app restriction).
+    Configuration aimed at reliable foreground and window detection.
+    
+    Event types:
+      - typeWindowStateChanged: app transitions (most common)
+      - typeWindowsChanged: window stack changes (some OEMs use this instead)
+      - typeWindowContentChanged: content updates (needed for re-enforcement)
+      - typeViewTextChanged: text field changes
+      - typeViewScrolled: scroll events
+      - typeViewClicked: click events
+      - typeViewFocused: focus events
+    
+    Flags:
+      - flagReportViewIds: provides view IDs for debugging
+      - flagRetrieveInteractiveWindows: access to interactive windows
+      - flagIncludeNotImportantViews: don't miss views marked as not important
+    
+    notificationTimeout=0: process all events immediately (no batching delay)
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged|typeViewTextChanged|typeViewTextSelectionChanged|typeViewScrolled|typeViewClicked|typeViewFocused"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="0"
+    android:settingsActivity="dev.ambitionsoftware.tymeboxed.MainActivity"
+    android:summary="@string/accessibility_service_summary" />

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Device-admin policy declaration.
+
+    The headline Brick-style behaviour ("Can't uninstall active device admin app") is provided
+    by the OS Settings / Package Installer whenever ANY admin is active for this app — no policy
+    flags are required for it. Declared policies here only matter when the app is actually
+    Device Owner (ADB-provisioned), in which case [TymeBoxedDeviceAdminReceiver.onEnabled]
+    additionally wires [DevicePolicyManager.setUninstallBlocked].
+
+    Why we don't enable more policies:
+      - Most policies (`disable-keyguard-features`, `wipe-data`, `expire-password`, etc.) require
+        Device Owner / Profile Owner status. A regular consumer install can't get them.
+      - Declaring them anyway would just confuse the system "Activate device admin app" page
+        with permissions we never use and scare users away from enabling the admin at all.
+
+    `force-lock` is kept because it's harmless and the only policy that has a useful "fallback"
+    behaviour as a non-owner admin — it satisfies the OS minimum so the receiver registers.
+-->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android"
+    android:visible="true">
+
+    <uses-policies>
+        <force-lock />
+    </uses-policies>
+
+</device-admin>

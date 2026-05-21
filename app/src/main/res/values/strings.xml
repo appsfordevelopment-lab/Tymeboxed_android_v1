@@ -1,0 +1,142 @@
+<resources>
+    <string name="app_name">Tyme Boxed</string>
+    <string name="nav_back">Back</string>
+    <string name="blocked_apps_picker_title">Select apps to restrict</string>
+    <string name="blocked_apps_search_hint">Search apps</string>
+    <string name="blocked_apps_loading">Loading apps…</string>
+    <string name="blocked_apps_no_match">No apps match your search</string>
+    <string name="blocked_domains_picker_title">Select domains to restrict</string>
+    <string name="blocked_domains_search_hint">Search added domains</string>
+    <string name="blocked_domains_add_label">Add domain</string>
+    <string name="blocked_domains_picker_allow_mode_hint">Domain allow mode is on - only listed sites stay allowed; all other web traffic is treated as out of focus.</string>
+    <string name="blocked_domains_no_match">No domains match your search</string>
+    <string name="blocked_domains_empty_hint">No domains yet. Type a host (e.g. example.com) and tap + to add it.</string>
+    <string name="cd_remove_domain">Remove domain</string>
+
+    <!-- Accessibility service surface strings (shown in system Settings > Accessibility) -->
+    <string name="accessibility_service_summary">Helps keep focus sessions active and apps restricted as you set.</string>
+    <string name="accessibility_service_description">
+        Tyme Boxed uses Accessibility to detect when a restricted app opens during a focus
+        session and return you to the home screen. It never reads screen content,
+        messages, or personal data. You can turn this off any time.
+    </string>
+
+    <!--
+        Device admin label / description.
+
+        Shown by Android on the "Activate device admin app?" system dialog when the user is
+        about to enable admin access. Keep the copy honest about what we actually use (uninstall
+        friction) so the user isn't scared off by the OEM-default permission list.
+    -->
+    <string name="device_admin_label">Tyme Boxed Strict-mode protection</string>
+    <string name="device_admin_description">
+        Adds uninstall friction so you can\'t casually remove Tyme Boxed during a
+        Strict-mode focus session. We never erase data, change your screen lock, or alter
+        device security. You can turn this off any time from Settings > Security > Device admin apps.
+    </string>
+
+    <!-- Foreground service notification strings -->
+    <string name="session_channel_name">Active Session</string>
+    <string name="session_channel_description">Ongoing notification shown while a focus session is running.</string>
+    <string name="session_notification_body_paused">Focus session paused. Tap to open Tyme Boxed.</string>
+    <string name="session_notification_paused">Paused</string>
+    <string name="session_notification_quote_fallback">Stay in the zone.</string>
+
+    <!-- Timer settings sheet (Foqos-style focus / session-with-break start flow) -->
+    <string name="timer_settings_title">Timer Settings</string>
+    <string name="timer_settings_subtitle">Select how long you want %1$s to last.</string>
+    <string name="timer_settings_confirm">Set Duration</string>
+    <string name="timer_settings_decrease">Decrease duration</string>
+    <string name="timer_settings_increase">Increase duration</string>
+
+    <!-- Post-session reminder (iOS: StrategyManager.scheduleReminder + UNTimeIntervalNotificationTrigger) -->
+    <string name="session_reminder_channel_name">Session reminders</string>
+    <string name="session_reminder_channel_description">Nudge to start a focus session again after one ends (when you enable Reminder on a profile)</string>
+    <string name="session_reminder_title">%1$s time!</string>
+    <string name="session_reminder_default_body">Get back to productivity by enabling %1$s</string>
+
+    <!-- In-app blocking (Switchly-aligned policy / UI) -->
+    <string name="in_app_content_blocked_title">%1$s blocked</string>
+    <string name="in_app_content_blocked_message">Tyme Boxed is blocking this section: %1$s. You can change this in Settings → In-app blocking.</string>
+    <string name="in_app_label_shorts">Shorts</string>
+    <string name="in_app_label_search">Search</string>
+    <string name="in_app_label_comments">Comments</string>
+    <string name="in_app_label_pip">Picture-in-picture</string>
+    <string name="in_app_label_reels">Reels</string>
+    <string name="in_app_label_explore_tab">Explore</string>
+    <string name="in_app_label_stories">Stories</string>
+    <string name="in_app_label_home">Home</string>
+    <string name="in_app_label_grok">Grok</string>
+    <string name="in_app_label_notifications">Notifications</string>
+    <string name="in_app_label_map">Map</string>
+    <string name="in_app_label_spotlight">Spotlight</string>
+    <string name="in_app_label_following">Following</string>
+
+    <string name="in_app_blocking_title">In-app blocking</string>
+    <string name="in_app_blocking_subtitle">Block Shorts, Reels, Explore, and more inside apps.</string>
+    <string name="in_app_blocking_intro_heading">Block specific features inside apps you still want to use - like Reels in Instagram or Shorts in YouTube.</string>
+    <string name="in_app_blocking_always_on_title">Block without a session</string>
+    <string name="in_app_blocking_always_on_subtitle">When on, your choices below (e.g. Shorts or Reels) apply anytime — not only during a focus session.</string>
+    <string name="in_app_footer_hint">Heads up - these blocks rely on detecting what\'s on screen, so they may break when apps update their layout.</string>
+
+    <string name="settings_permissions_reliability_title">Permissions &amp; reliability</string>
+    <string name="settings_permissions_reliability_subtitle">Manage permissions and fix blocking issues.</string>
+
+    <string name="strict_mode_title">Strict mode</string>
+    <string name="strict_mode_settings_subtitle">Stops you from uninstalling Tyme Boxed mid-session. Requires Admin access.</string>
+    <string name="strict_mode_settings_subtitle_session_active">Locked while a focus session is running. End the session to change this.</string>
+    <string name="strict_mode_admin_dialog_title">Lock yourself in</string>
+    <string name="strict_mode_admin_dialog_body">Strict mode stops you from uninstalling Tyme Boxed during a session - so future-you can’t bail.</string>
+    <string name="strict_mode_admin_dialog_footnote">Needs Device Admin access, which you can turn off anytime.</string>
+    <string name="strict_mode_admin_explanation">Strict mode needs Device Admin to prevent uninstall during a session. You can turn it off anytime.</string>
+    <string name="strict_mode_disable_dialog_title">Turn off Strict mode?</string>
+    <string name="strict_mode_disable_dialog_body">You committed to not uninstalling Tyme Boxed during sessions. Turning this off lets you bail anytime.</string>
+    <string name="strict_mode_disable_keep_on">Keep it on</string>
+    <string name="strict_mode_disable_confirm">Turn off</string>
+
+    <string name="emergency_access_title">Emergency Access</string>
+    <string name="emergency_access_hint">Tap the glass to reveal the emergency unblock button. Use only when absolutely necessary.</string>
+    <string name="emergency_access_hint_revealed">Use only when absolutely necessary. Each emergency unblock ends your focus session without scanning your device.</string>
+    <plurals name="emergency_glass_taps_remaining">
+        <item quantity="one">%d more tap to break the glass</item>
+        <item quantity="other">%d more taps to break the glass</item>
+    </plurals>
+    <string name="emergency_unblocks_remaining_label">Unblocks remaining</string>
+    <string name="emergency_unblocks_limited">You have a limited number of emergency unblocks.</string>
+    <string name="emergency_unblock_button">Emergency Unblock</string>
+    <string name="emergency_unblocks_none_left">No emergency unblocks remaining.</string>
+    <string name="emergency_unblock_cost">This will reduce your remaining count by 1.</string>
+    <string name="profile_region_active">Active Profile</string>
+    <string name="profile_region_default">Profile</string>
+    <string name="emergency_pill">Emergency</string>
+
+    <!-- NFC: only tags registered in the Tyme Boxed API (Tyme Boxed device) may start or stop a session. -->
+    <string name="nfc_error_whoops_title">Whoops</string>
+    <string name="nfc_read_failed">Couldn’t read this tag. Try again.</string>
+    <string name="nfc_use_tyme_boxed_device">Unregistered device detected. Please switch to a Tyme Box device.</string>
+    <string name="nfc_verify_network_error">Couldn’t verify this tag. Check your connection and try again.</string>
+
+    <!-- Profile edit screen — labels + accessibility (used by ProfileEditScreen). -->
+    <string name="profile_edit_menu_duplicate">Duplicate Profile</string>
+    <string name="profile_edit_menu_view_sessions">View Sessions</string>
+    <string name="profile_edit_menu_delete">Delete Profile</string>
+    <string name="profile_edit_name_section_title">Name</string>
+    <string name="profile_edit_name_placeholder">Profile Name - e.g. Work, Family Time, Gym</string>
+    <string name="profile_edit_apps_section_title">Apps to block</string>
+    <string name="profile_edit_select_apps">Select apps</string>
+    <string name="profile_edit_no_apps_selected">No apps selected</string>
+    <string name="profile_edit_websites_section_title">Websites to block</string>
+    <string name="profile_edit_select_domains">Select domains</string>
+    <string name="profile_edit_no_domains_selected">No domains selected</string>
+    <string name="profile_edit_domain_allow_mode_title">Block everything except these</string>
+    <string name="profile_edit_domain_allow_mode_desc">When on, only the domains you pick stay accessible. Everything else gets blocked.</string>
+    <string name="profile_edit_schedule_section_title">Schedule</string>
+    <string name="profile_edit_set_schedule">Set schedule</string>
+    <string name="profile_edit_strategy_section_title">How blocking works</string>
+    <string name="profile_edit_notification_section_title">Notification</string>
+    <string name="profile_edit_lock_screen_widget_title">Lock screen widget</string>
+    <string name="profile_edit_lock_screen_widget_desc">Shows session progress on your lock screen.</string>
+    <string name="profile_edit_restart_reminder_title">Restart reminder</string>
+    <string name="profile_edit_restart_reminder_desc">Pings you to start this profile again after it ends.</string>
+    <string name="cd_strategy_icon_fmt">%1$s strategy</string>
+</resources>

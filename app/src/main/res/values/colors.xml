@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default accent matches iOS ThemeManager default ("Warm Sandstone"). -->
+    <color name="ic_launcher_background">#FFB004</color>
+    <!-- Neutral splash (full-bleed logo already includes brand yellow/orange). -->
+    <color name="splash_background">#FAFAFA</color>
+</resources>

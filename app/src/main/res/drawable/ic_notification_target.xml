@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Simple bullseye/target glyph for the notification header. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2.5C6.753,2.5 2.5,6.753 2.5,12C2.5,17.247 6.753,21.5 12,21.5C17.247,21.5 21.5,17.247 21.5,12C21.5,6.753 17.247,2.5 12,2.5ZM12,4.5C16.142,4.5 19.5,7.858 19.5,12C19.5,16.142 16.142,19.5 12,19.5C7.858,19.5 4.5,16.142 4.5,12C4.5,7.858 7.858,4.5 12,4.5Z" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,7.5C9.515,7.5 7.5,9.515 7.5,12C7.5,14.485 9.515,16.5 12,16.5C14.485,16.5 16.5,14.485 16.5,12C16.5,9.515 14.485,7.5 12,7.5ZM12,9.5C13.381,9.5 14.5,10.619 14.5,12C14.5,13.381 13.381,14.5 12,14.5C10.619,14.5 9.5,13.381 9.5,12C9.5,10.619 10.619,9.5 12,9.5Z" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,10.8C11.337,10.8 10.8,11.337 10.8,12C10.8,12.663 11.337,13.2 12,13.2C12.663,13.2 13.2,12.663 13.2,12C13.2,11.337 12.663,10.8 12,10.8Z" />
+</vector>
+
