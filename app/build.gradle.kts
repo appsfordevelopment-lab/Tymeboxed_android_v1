@@ -43,8 +43,8 @@ val hasReleaseSigningCredentials: Boolean =
         releaseKeyPassword.isNotBlank() &&
         rootProject.file(releaseKeystoreFile).exists()
 
-val appVersionCode = 3
-val appVersionName = "1.1.3"
+val appVersionCode = 7
+val appVersionName = "1.1.7"
 
 android {
     namespace = "dev.ambitionsoftware.tymeboxed"
@@ -67,6 +67,11 @@ android {
             "\"https://api.tymeboxed.app\"",
         )
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+
+        // Play Console: embed native debug symbols in release AABs (required when .so libs are packaged).
+        ndk {
+            debugSymbolLevel = "FULL"
+        }
     }
 
 
@@ -117,6 +122,10 @@ android {
     }
 
     packaging {
+        jniLibs {
+            // Preserve symbol tables from packaged .so (androidx DataStore, graphics.path, etc.).
+            keepDebugSymbols += "**/*.so"
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
@@ -201,4 +210,26 @@ dependencies {
 
     // Google Sign-In
     implementation(libs.play.services.auth)
+}
+
+// androidx ships pre-stripped .so files; AGP may not auto-embed debug metadata in the AAB.
+// This zip is for manual upload in Play Console → App bundle explorer → Downloads → Assets.
+afterEvaluate {
+    tasks.register<Zip>("packageReleaseNativeDebugSymbols") {
+        group = "release"
+        description = "Builds native-debug-symbols.zip for Play Console native crash symbolication."
+        dependsOn("mergeReleaseNativeLibs")
+        val libDir =
+            layout.buildDirectory.dir(
+                "intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib",
+            )
+        from(libDir)
+        archiveFileName.set("native-debug-symbols.zip")
+        destinationDirectory.set(
+            layout.buildDirectory.dir("outputs/native-debug-symbols/release"),
+        )
+    }
+    tasks.named("bundleRelease").configure {
+        dependsOn("packageReleaseNativeDebugSymbols")
+    }
 }

@@ -25,6 +25,7 @@
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
+    android:isAccessibilityTool="false"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="0"
     android:settingsActivity="dev.ambitionsoftware.tymeboxed.MainActivity"

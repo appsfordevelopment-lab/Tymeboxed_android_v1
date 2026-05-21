@@ -15,15 +15,16 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
-    <!-- Foreground service for the active-session "live activity" equivalent -->
+    <!-- SessionBlockerService uses specialUse (see service declaration below). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Timer / scheduling precision -->
+    <!-- Timer / scheduling precision — SCHEDULE_EXACT_ALARM requires user
+         grant on API 31+ but is allowed for non-alarm/calendar apps.
+         USE_EXACT_ALARM is restricted to alarm clock / calendar apps only. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <!-- Keep the accessibility service alive across Doze / app standby -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -90,6 +91,7 @@
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="https"
                     android:host="www.foqos.app"
                     android:pathPrefix="/profile/" />
@@ -98,6 +100,7 @@
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="https"
                     android:host="foqos.app"
                     android:pathPrefix="/profile/" />
@@ -106,6 +109,7 @@
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="http"
                     android:host="www.foqos.app"
                     android:pathPrefix="/profile/" />
@@ -114,6 +118,7 @@
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="http"
                     android:host="foqos.app"
                     android:pathPrefix="/profile/" />
@@ -124,6 +129,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="https"
                     android:host="www.foqos.app"
                     android:pathPrefix="/profile/" />
@@ -133,6 +139,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="https"
                     android:host="foqos.app"
                     android:pathPrefix="/profile/" />
@@ -142,6 +149,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="http"
                     android:host="www.foqos.app"
                     android:pathPrefix="/profile/" />
@@ -151,6 +159,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
+                    tools:ignore="Typos"
                     android:scheme="http"
                     android:host="foqos.app"
                     android:pathPrefix="/profile/" />
@@ -163,11 +172,13 @@
 
         <!-- Blocking engine stubs (full implementation lands in Phase 3). -->
         <!-- Declared here so the manifest + DI graph line up with Phase 1. -->
+        <!-- Focus-session blocking only; not an accessibility tool (Play policy). -->
         <service
             android:name=".service.AppBlockerAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
@@ -191,8 +202,13 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Displays the active focus session timer and stop action." />
+                android:value="Displays the active focus session timer and stop action while a focus session is running." />
         </service>
+
+        <!-- WorkManager is on the classpath but unused; strip its FGS so API 34+ type checks pass. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
 
         <receiver
             android:name=".service.BootCompletedReceiver"
