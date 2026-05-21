@@ -14,11 +14,34 @@
     <string name="cd_remove_domain">Remove domain</string>
 
     <!-- Accessibility service surface strings (shown in system Settings > Accessibility) -->
-    <string name="accessibility_service_summary">Helps keep focus sessions active and apps restricted as you set.</string>
+    <string name="accessibility_service_summary">Detects restricted apps and browser URLs during focus sessions.</string>
     <string name="accessibility_service_description">
-        Tyme Boxed uses Accessibility to detect when a restricted app opens during a focus
-        session and return you to the home screen. It never reads screen content,
-        messages, or personal data. You can turn this off any time.
+        Tyme Boxed uses the Accessibility Service to detect when you open a restricted app
+        during a focus session and redirects you to the home screen to keep your session active.
+        It also reads browser URL bars to enforce website blocking rules you set.
+        Tyme Boxed does not collect, store, or share any personal data through this service.
+        All processing happens on-device in real time. You can turn this off any time in
+        Settings &gt; Accessibility.
+    </string>
+
+    <!-- In-app prominent disclosure (Permissions screen + pre-settings dialog) -->
+    <string name="accessibility_disclosure_title">Accessibility access</string>
+    <string name="accessibility_disclosure_intro">
+        Tyme Boxed needs Accessibility access for app and website blocking during focus sessions.
+    </string>
+    <string name="accessibility_disclosure_what_it_does">
+        • Detects when you open a restricted app during a focus session and redirects you to the home screen\n
+        • Reads browser URL bars to enforce website blocking rules you set
+    </string>
+    <string name="accessibility_disclosure_privacy">
+        Tyme Boxed does not collect, store, or share any personal data through the Accessibility
+        Service. All processing happens on-device in real time. You can disable this any time in
+        Settings &gt; Accessibility.
+    </string>
+    <string name="accessibility_disclosure_open_settings">Open Accessibility settings</string>
+    <string name="accessibility_disclosure_not_now">Not now</string>
+    <string name="accessibility_permission_row_description">
+        Detects restricted apps during focus sessions and returns you home. Reads browser URLs for site blocking. On-device only — nothing is collected or shared.
     </string>
 
     <!--

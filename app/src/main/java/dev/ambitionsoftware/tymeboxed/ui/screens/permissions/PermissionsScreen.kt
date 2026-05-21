@@ -1,14 +1,5 @@
 package dev.ambitionsoftware.tymeboxed.ui.screens.permissions
 
-import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import dev.ambitionsoftware.tymeboxed.MainActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -41,10 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import dev.ambitionsoftware.tymeboxed.permissions.PermissionIntents
+import dev.ambitionsoftware.tymeboxed.permissions.grantPermission
 import dev.ambitionsoftware.tymeboxed.permissions.PermissionsViewModel
 import dev.ambitionsoftware.tymeboxed.permissions.TymePermission
 import dev.ambitionsoftware.tymeboxed.R
+import dev.ambitionsoftware.tymeboxed.ui.components.AccessibilityDisclosureDialog
 import dev.ambitionsoftware.tymeboxed.ui.components.PermissionRow
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCard
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCardDivider
@@ -65,6 +60,7 @@ fun PermissionsScreen(
     val vm: PermissionsViewModel = hiltViewModel()
     val states by vm.states.collectAsState()
     val ctx = LocalContext.current
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -111,6 +107,29 @@ fun PermissionsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            SettingsCard(title = stringResource(R.string.accessibility_disclosure_title)) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.accessibility_disclosure_intro),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.accessibility_disclosure_what_it_does),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(R.string.accessibility_disclosure_privacy),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             SettingsCard {
                 val visiblePermissions = TymePermission.requiredPermissions
                     // Admin access is managed via the Strict Mode toggle flow, not from this list.
@@ -120,7 +139,13 @@ fun PermissionsScreen(
                     PermissionRow(
                         permission = perm,
                         granted = states[perm] == true,
-                        onGrantClick = { openPermissionIntent(ctx, perm) },
+                        onGrantClick = {
+                            if (perm == TymePermission.ACCESSIBILITY) {
+                                showAccessibilityDisclosure = true
+                            } else {
+                                grantPermission(ctx, perm)
+                            }
+                        },
                         unavailable = nfcUnavailable,
                     )
                     if (idx < visiblePermissions.lastIndex) {
@@ -132,67 +157,14 @@ fun PermissionsScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
-}
 
-private fun openPermissionIntent(context: Context, perm: TymePermission) {
-    // POST_NOTIFICATIONS gets the runtime dialog first; only fall back to the
-    // app-notifications settings page once the user has permanently denied it.
-    if (perm == TymePermission.NOTIFICATIONS && tryRequestPostNotificationsRuntime(context)) return
-
-    val res = PermissionIntents.tryStart(context, perm)
-    if (!res.started) {
-        val hint = "Please open system settings manually"
-        val err = res.lastError?.javaClass?.simpleName ?: "Unknown"
-        Toast.makeText(
-            context,
-            "Couldn't open ${perm.title} ($err). $hint.",
-            Toast.LENGTH_LONG,
-        ).show()
+    if (showAccessibilityDisclosure) {
+        AccessibilityDisclosureDialog(
+            onDismiss = { showAccessibilityDisclosure = false },
+            onConfirmOpenSettings = {
+                showAccessibilityDisclosure = false
+                grantPermission(ctx, TymePermission.ACCESSIBILITY)
+            },
+        )
     }
 }
-
-/**
- * Asks the OS for the runtime POST_NOTIFICATIONS permission on Android 13+ via
- * the host activity's pre-registered launcher.
- *
- * Returns true when the dialog was triggered (or the permission is already
- * granted / cannot be re-requested) so the caller skips the settings-page
- * fallback. Returns false when there's no activity context or the OS is pre-13,
- * letting the caller fall back to [PermissionIntents.tryStart].
- */
-private fun tryRequestPostNotificationsRuntime(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
-    val activity = context as? MainActivity ?: return false
-    val already = ContextCompat.checkSelfPermission(
-        activity,
-        Manifest.permission.POST_NOTIFICATIONS,
-    ) == PackageManager.PERMISSION_GRANTED
-    if (already) return true
-    // If the user has permanently denied, shouldShowRequestPermissionRationale
-    // returns false AND the permission isn't granted. Send them to settings instead.
-    val canPrompt = ActivityCompat.shouldShowRequestPermissionRationale(
-        activity,
-        Manifest.permission.POST_NOTIFICATIONS,
-    ) || isFirstNotificationsRequest(activity)
-    if (!canPrompt) return false
-    activity.requestPostNotificationsPermission()
-    return true
-}
-
-/**
- * Heuristic: before the user has ever responded to the dialog the system
- * returns `false` from [ActivityCompat.shouldShowRequestPermissionRationale]
- * too. We still want to show the dialog in that case, so we treat
- * "never granted + no record of a prior denial" as a first-time prompt.
- */
-private fun isFirstNotificationsRequest(activity: Activity): Boolean {
-    val prefs = activity.getSharedPreferences("perm_state", Context.MODE_PRIVATE)
-    val asked = prefs.getBoolean(KEY_ASKED_POST_NOTIFICATIONS, false)
-    if (!asked) {
-        prefs.edit().putBoolean(KEY_ASKED_POST_NOTIFICATIONS, true).apply()
-        return true
-    }
-    return false
-}
-
-private const val KEY_ASKED_POST_NOTIFICATIONS = "asked_post_notifications"

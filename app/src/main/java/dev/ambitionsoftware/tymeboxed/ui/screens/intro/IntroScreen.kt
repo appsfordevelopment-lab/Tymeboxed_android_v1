@@ -100,9 +100,10 @@ import dev.ambitionsoftware.tymeboxed.BuildConfig
 import dev.ambitionsoftware.tymeboxed.R
 import dev.ambitionsoftware.tymeboxed.auth.GoogleSignInHelper
 import dev.ambitionsoftware.tymeboxed.data.prefs.AppPreferences
-import dev.ambitionsoftware.tymeboxed.permissions.PermissionIntents
+import dev.ambitionsoftware.tymeboxed.permissions.grantPermission
 import dev.ambitionsoftware.tymeboxed.permissions.PermissionsViewModel
 import dev.ambitionsoftware.tymeboxed.permissions.TymePermission
+import dev.ambitionsoftware.tymeboxed.ui.components.AccessibilityDisclosureDialog
 import dev.ambitionsoftware.tymeboxed.ui.components.ActionButton
 import dev.ambitionsoftware.tymeboxed.ui.components.PermissionRow
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCard
@@ -1109,6 +1110,7 @@ private fun PermissionsStep(
     val ctx = LocalContext.current
     val states by vm.states.collectAsState()
     val p = rememberOnboardingConnectPalette()
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
     OnboardingFullBleedSystemBarsEffect()
     // Device Admin (Admin access) is requested only when Strict mode is enabled in Settings.
     // Never show it during onboarding/sign-up.
@@ -1122,7 +1124,7 @@ private fun PermissionsStep(
     val requiredTotal = required.size
     val descriptionText = when {
         grantedRequiredCount == 0 ->
-            "Tyme Boxed needs these to block apps and keep sessions running. Tap each to allow."
+            "Tyme Boxed needs these permissions to block apps and keep sessions running. Accessibility access detects restricted apps and browser URLs on-device only — nothing is collected or shared."
         grantedRequiredCount >= requiredTotal ->
             "You're all set. Change anytime in Settings."
         else ->
@@ -1210,7 +1212,13 @@ private fun PermissionsStep(
                         PermissionRow(
                             permission = perm,
                             granted = states[perm] == true,
-                            onGrantClick = { openPermissionIntent(ctx, perm) },
+                            onGrantClick = {
+                                if (perm == TymePermission.ACCESSIBILITY) {
+                                    showAccessibilityDisclosure = true
+                                } else {
+                                    grantPermission(ctx, perm)
+                                }
+                            },
                             unavailable = nfcUnavailable,
                         )
                         if (idx < required.lastIndex) {
@@ -1239,18 +1247,15 @@ private fun PermissionsStep(
             )
         }
     }
-}
 
-private fun openPermissionIntent(context: Context, perm: TymePermission) {
-    val res = PermissionIntents.tryStart(context, perm)
-    if (!res.started) {
-        val hint = "Please open system settings manually"
-        val err = res.lastError?.javaClass?.simpleName ?: "Unknown"
-        Toast.makeText(
-            context,
-            "Couldn't open ${perm.title} ($err). $hint.",
-            Toast.LENGTH_LONG,
-        ).show()
+    if (showAccessibilityDisclosure) {
+        AccessibilityDisclosureDialog(
+            onDismiss = { showAccessibilityDisclosure = false },
+            onConfirmOpenSettings = {
+                showAccessibilityDisclosure = false
+                grantPermission(ctx, TymePermission.ACCESSIBILITY)
+            },
+        )
     }
 }
 

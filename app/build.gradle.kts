@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 
 
@@ -44,14 +45,15 @@ val hasReleaseSigningCredentials: Boolean =
 
 android {
     namespace = "dev.ambitionsoftware.tymeboxed"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.ambitionsoftware.tymeboxed"
         minSdk = 28
-        targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        //noinspection EditedTargetSdkVersion
+        targetSdk = 36
+        versionCode = 2
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -106,10 +108,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -125,7 +123,20 @@ android {
         // Informational "newer version available" notices — suppress to keep
         // the lint report focused on actionable issues. Dependency upgrades
         // are handled deliberately, not via lint nag.
-        disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "ObsoleteSdkInt")
+        disable += setOf(
+            "GradleDependency",
+            "AndroidGradlePluginVersion",
+            "ObsoleteSdkInt",
+            // Informational reminder after manually bumping targetSdk; migration
+            // to API 36 was reviewed (AGP 8.11.2, edge-to-edge, specialUse FGS).
+            "EditedTargetSdkVersion",
+        )
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

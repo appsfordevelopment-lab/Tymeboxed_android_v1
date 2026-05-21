@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Informational IDE-only check after manually bumping targetSdk. -->
+    <issue id="EditedTargetSdkVersion" severity="ignore" />
+</lint>

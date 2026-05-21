@@ -16,7 +16,7 @@ enum class TymePermission(
     ACCESSIBILITY(
         key = "accessibility",
         title = "Accessibility",
-        description = "Sends you home when blocked apps open.",
+        description = "Detects restricted apps during focus sessions and returns you home. Reads browser URLs for site blocking. On-device only — nothing is collected or shared.",
         required = true,
     ),
     USAGE_STATS(
