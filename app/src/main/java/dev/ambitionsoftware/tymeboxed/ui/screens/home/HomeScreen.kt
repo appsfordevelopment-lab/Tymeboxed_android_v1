@@ -37,6 +37,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -50,7 +52,11 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Nfc
+import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Stop
@@ -94,6 +100,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -459,6 +466,7 @@ private fun aggregateSessionMinutesByLocalDayByProfile(
 fun HomeScreen(
     onOpenSettings: () -> Unit,
     onCreateProfile: () -> Unit,
+    onOpenFullProfileEditor: () -> Unit = onCreateProfile,
     onEditProfile: (String) -> Unit = {},
 ) {
     val vm: HomeViewModel = hiltViewModel()
@@ -710,7 +718,10 @@ fun HomeScreen(
                         // profile list lands.
                         ProfileListLoadingPlaceholder()
                     } else if (profiles.isEmpty()) {
-                        WelcomeEmptyCard(onTap = onCreateProfile)
+                        GettingStartedEmptyState(
+                            onCreateProfile = onCreateProfile,
+                            onOpenFullEditor = onOpenFullProfileEditor,
+                        )
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                             ActivitySection(
@@ -753,9 +764,13 @@ fun HomeScreen(
             ProfilesManageFullScreen(
                 profiles = profiles,
                 onDismiss = { showProfilesSheet = false },
-                onCreateProfile = {
+                onGuidedSetup = {
                     showProfilesSheet = false
                     onCreateProfile()
+                },
+                onFullProfileEditor = {
+                    showProfilesSheet = false
+                    onOpenFullProfileEditor()
                 },
                 onEditProfile = { id ->
                     showProfilesSheet = false
@@ -814,141 +829,145 @@ private fun ProfileListLoadingPlaceholder() {
 }
 
 /**
- * Empty-state hero card — target icon, theme blob, “Welcome to” / “Tymeboxed” copy.
- * Tapping opens profile creation.
+ * Foqos-style empty home — decorative icons, “Getting Started”, and accent CTA.
+ * Accent color follows Settings → Appearance (Material [colorScheme.primary]).
  */
 @Composable
-private fun WelcomeEmptyCard(onTap: () -> Unit) {
+private fun GettingStartedEmptyState(
+    onCreateProfile: () -> Unit,
+    onOpenFullEditor: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
-    val isDark = isSystemInDarkTheme()
-    val cardShape = RoundedCornerShape(24.dp)
-    val accentGold = Color(0xFFC4A77D)
-    val titleColor = if (isDark) Color.White else cs.onSurface
-    val subtitleColor = if (isDark) Color(0xFFBBBBBB) else cs.onSurfaceVariant
-
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 200.dp)
-            .clip(cardShape)
-            .clickable(onClick = onTap),
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BoxWithConstraints(modifier = Modifier.matchParentSize()) {
-            val w = constraints.maxWidth.toFloat()
-            val h = constraints.maxHeight.toFloat()
-            if (isDark) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF1E1E22),
-                                    Color(0xFF252420),
-                                    Color(0xFF2A2520),
-                                ),
-                                start = Offset(0f, h * 0.5f),
-                                end = Offset(w, 0f),
-                            ),
-                        ),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFFE8D4B8).copy(alpha = 0.42f),
-                                    accentGold.copy(alpha = 0.12f),
-                                    Color.Transparent,
-                                ),
-                                center = Offset(w * 0.92f, h * 0.08f),
-                                radius = w * 0.65f,
-                            ),
-                        ),
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFF8F8FA),
-                                    Color(0xFFF2F0EC),
-                                    Color(0xFFEDE8E0),
-                                ),
-                                start = Offset(0f, h * 0.5f),
-                                end = Offset(w, 0f),
-                            ),
-                        ),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentGold.copy(alpha = 0.28f),
-                                    Color(0xFFE8D4B8).copy(alpha = 0.18f),
-                                    Color.Transparent,
-                                ),
-                                center = Offset(w * 0.92f, h * 0.08f),
-                                radius = w * 0.65f,
-                            ),
-                        ),
-                )
-            }
-        }
-        Column(
+        GettingStartedIconCluster(modifier = Modifier.padding(vertical = 24.dp))
+        Text(
+            text = "Getting Started",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = cs.onBackground,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Let's get you started by creating your first profile. " +
+                "You can customize it as much or as little as you'd like.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = cs.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 24.sp,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Spacer(modifier = Modifier.height(28.dp))
+        Button(
+            onClick = onCreateProfile,
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(horizontal = 20.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.Center,
+                .height(52.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = cs.primary,
+                contentColor = cs.onPrimary,
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 2.dp,
+            ),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Welcome to",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor,
-                        fontSize = 28.sp,
-                        lineHeight = 32.sp,
-                    )
-                    Text(
-                        text = "Tymeboxed",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor,
-                        fontSize = 28.sp,
-                        lineHeight = 32.sp,
-                    )
-                }
-                Image(
-                    painter = painterResource(R.drawable.welcome_app_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(52.dp),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = ColorFilter.tint(titleColor),
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+            Icon(
+                imageVector = Icons.Default.Psychology,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Tap to create your first blocklist and start focusing.",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = subtitleColor,
+                text = "Create Profile",
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 17.sp,
-                lineHeight = 24.sp,
-                maxLines = 3,
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Use the full profile editor",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = cs.primary,
+            modifier = Modifier.clickable(onClick = onOpenFullEditor),
+        )
+    }
+}
+
+@Composable
+private fun GettingStartedIconCluster(modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val bubbleBg = cs.surface
+    val iconTint = cs.onSurface
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(160.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        GettingStartedIconBubble(
+            icon = Icons.Default.QrCode2,
+            tint = iconTint,
+            background = bubbleBg,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 24.dp, top = 8.dp),
+        )
+        GettingStartedIconBubble(
+            icon = Icons.Default.Nfc,
+            tint = cs.primary,
+            background = bubbleBg,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 20.dp, top = 0.dp),
+        )
+        GettingStartedIconBubble(
+            icon = Icons.Default.Nfc,
+            tint = Color(0xFF007AFF),
+            background = bubbleBg,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 32.dp, bottom = 4.dp),
+        )
+        GettingStartedIconBubble(
+            icon = Icons.Default.Schedule,
+            tint = Color(0xFFC4A77D),
+            background = bubbleBg,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 28.dp, bottom = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun GettingStartedIconBubble(
+    icon: ImageVector,
+    tint: Color,
+    background: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(64.dp)
+            .shadow(6.dp, CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(background)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(30.dp),
+        )
     }
 }
 
@@ -1215,11 +1234,15 @@ private fun formatProfileUpdatedAgo(updatedAtMs: Long, nowMs: Long): String {
 private fun ProfilesManageFullScreen(
     profiles: List<Profile>,
     onDismiss: () -> Unit,
-    onCreateProfile: () -> Unit,
+    onGuidedSetup: () -> Unit,
+    onFullProfileEditor: () -> Unit,
     onEditProfile: (String) -> Unit,
 ) {
     BackHandler(onBack = onDismiss)
     val cs = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+    val menuBg = if (isDark) Color(0xEC2C2C2E) else Color(0xF5FAFAFA)
+    val menuItemColor = if (isDark) Color.White else cs.onSurface
     var headerMenuExpanded by remember { mutableStateOf(false) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
@@ -1275,7 +1298,7 @@ private fun ProfilesManageFullScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.MoreHoriz,
-                                    contentDescription = "More options",
+                                    contentDescription = stringResource(R.string.profiles_manage_menu_more),
                                     tint = cs.onSurface,
                                     modifier = Modifier.size(22.dp),
                                 )
@@ -1287,7 +1310,10 @@ private fun ProfilesManageFullScreen(
                                     .background(cs.outline.copy(alpha = 0.28f)),
                             )
                             IconButton(
-                                onClick = onCreateProfile,
+                                onClick = {
+                                    headerMenuExpanded = false
+                                    onGuidedSetup()
+                                },
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
@@ -1302,10 +1328,56 @@ private fun ProfilesManageFullScreen(
                     DropdownMenu(
                         expanded = headerMenuExpanded,
                         onDismissRequest = { headerMenuExpanded = false },
+                        modifier = Modifier.widthIn(min = 260.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        containerColor = menuBg,
+                        shadowElevation = 12.dp,
+                        border = BorderStroke(
+                            1.dp,
+                            cs.outline.copy(alpha = if (isDark) 0.28f else 0.22f),
+                        ),
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Sort by name") },
-                            onClick = { headerMenuExpanded = false },
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.profiles_manage_guided_setup),
+                                    color = menuItemColor,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Assignment,
+                                    contentDescription = null,
+                                    tint = menuItemColor,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                            onClick = {
+                                headerMenuExpanded = false
+                                onGuidedSetup()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.profiles_manage_full_editor),
+                                    color = menuItemColor,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = menuItemColor,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                            onClick = {
+                                headerMenuExpanded = false
+                                onFullProfileEditor()
+                            },
                         )
                     }
                 }

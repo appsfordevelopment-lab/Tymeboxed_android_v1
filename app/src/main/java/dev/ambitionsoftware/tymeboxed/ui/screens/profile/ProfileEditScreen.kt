@@ -221,6 +221,8 @@ fun ProfileEditScreen(
                 DomainSection(
                     isAllowModeDomains = state.isAllowModeDomains,
                     onAllowModeDomainsChange = vm::onAllowModeDomainsChange,
+                    blockAdultWebsites = state.blockAdultWebsites,
+                    onBlockAdultWebsitesChange = vm::onBlockAdultWebsitesChange,
                     domains = state.domains,
                     onOpenDomainPicker = onOpenBlockedDomains,
                 )
@@ -717,6 +719,8 @@ private fun AppPickerSection(
 private fun DomainSection(
     isAllowModeDomains: Boolean,
     onAllowModeDomainsChange: (Boolean) -> Unit,
+    blockAdultWebsites: Boolean,
+    onBlockAdultWebsitesChange: (Boolean) -> Unit,
     domains: List<String>,
     onOpenDomainPicker: () -> Unit,
 ) {
@@ -781,6 +785,17 @@ private fun DomainSection(
                 description = stringResource(R.string.profile_edit_domain_allow_mode_desc),
                 checked = isAllowModeDomains,
                 onCheckedChange = onAllowModeDomainsChange,
+            )
+        }
+
+        SettingsCardDivider()
+
+        SettingsCardRow {
+            CustomToggle(
+                title = stringResource(R.string.profile_edit_block_adult_websites_title),
+                description = stringResource(R.string.profile_edit_block_adult_websites_desc),
+                checked = blockAdultWebsites,
+                onCheckedChange = onBlockAdultWebsitesChange,
             )
         }
     }

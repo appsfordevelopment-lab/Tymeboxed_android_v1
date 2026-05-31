@@ -153,6 +153,12 @@
     <string name="profile_edit_no_domains_selected">No domains selected</string>
     <string name="profile_edit_domain_allow_mode_title">Block everything except these</string>
     <string name="profile_edit_domain_allow_mode_desc">When on, only the domains you pick stay accessible. Everything else gets blocked.</string>
+    <string name="profile_edit_block_adult_websites_title">Block Adult Websites</string>
+    <string name="profile_edit_block_adult_websites_desc">Blocks common adult sites in the browser during sessions. You can still add extra domains to block.</string>
+
+    <string name="profiles_manage_guided_setup">Guided Setup</string>
+    <string name="profiles_manage_full_editor">Full Profile Editor</string>
+    <string name="profiles_manage_menu_more">More profile options</string>
     <string name="profile_edit_schedule_section_title">Schedule</string>
     <string name="profile_edit_set_schedule">Set schedule</string>
     <string name="profile_edit_strategy_section_title">How blocking works</string>

@@ -63,6 +63,7 @@ object BlockingStateRestorer {
             isAllowMode = profile.isAllowMode,
             domains = profile.domains,
             isAllowModeDomains = profile.isAllowModeDomains,
+            blockAdultWebsites = profile.blockAdultWebsites,
             sessionStartTimeMs = session.startTime,
             strategyId = strategyId,
             isPauseActive = session.isPauseActive,

@@ -43,6 +43,8 @@ data class ProfileEntity(
 
     val isAllowMode: Boolean = false,
     val isAllowModeDomains: Boolean = false,
+    /** When true, common adult sites are blocked in browsers during sessions. */
+    val blockAdultWebsites: Boolean = false,
     val domains: String? = null, // comma-separated
     val order: Int = 0,
     val accentColorHex: String? = null,

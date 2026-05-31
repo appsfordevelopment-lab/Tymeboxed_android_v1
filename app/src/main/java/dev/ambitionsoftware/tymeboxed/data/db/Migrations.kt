@@ -74,5 +74,16 @@ object Migrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_3_4, MIGRATION_4_5)
+    /**
+     * v5 → v6: [ProfileEntity.blockAdultWebsites] for Foqos-style adult site blocking in browsers.
+     */
+    private val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE profiles ADD COLUMN blockAdultWebsites INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }

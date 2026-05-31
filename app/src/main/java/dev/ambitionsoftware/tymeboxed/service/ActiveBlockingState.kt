@@ -42,6 +42,7 @@ object ActiveBlockingState {
         /** Normalized hostnames from the active profile (see [DomainBlocking.normalize]). */
         val domains: Set<String> = emptySet(),
         val isAllowModeDomains: Boolean = false,
+        val blockAdultWebsites: Boolean = false,
         /**
          * When true, the foreground session notification uses Live Activity–style copy (iOS
          * `enableLiveActivity`): app title, profile name, random focus line, timer/status.
@@ -76,6 +77,7 @@ object ActiveBlockingState {
         isAllowMode: Boolean,
         domains: List<String> = emptyList(),
         isAllowModeDomains: Boolean = false,
+        blockAdultWebsites: Boolean = false,
         sessionStartTimeMs: Long = 0L,
         strategyId: String = BlockingStrategyId.NFC_UNLOCK,
         isPauseActive: Boolean = false,
@@ -104,6 +106,7 @@ object ActiveBlockingState {
                 isAllowMode = isAllowMode,
                 domains = normalizedDomains,
                 isAllowModeDomains = isAllowModeDomains,
+                blockAdultWebsites = blockAdultWebsites,
                 enableLiveActivityNotification = enableLiveActivityNotification,
                 focusQuoteMessage = focusQuoteMessage,
             )
@@ -212,7 +215,7 @@ object ActiveBlockingState {
     fun hasDomainRules(): Boolean {
         val snap = current
         if (!snap.isBlocking || snap.isPauseActive) return false
-        return snap.domains.isNotEmpty()
+        return snap.domains.isNotEmpty() || snap.blockAdultWebsites
     }
 
     /**
@@ -223,8 +226,12 @@ object ActiveBlockingState {
      */
     fun shouldBlockDomain(host: String): Boolean {
         val snap = current
-        if (!snap.isBlocking || snap.isPauseActive || snap.domains.isEmpty()) return false
+        if (!snap.isBlocking || snap.isPauseActive) return false
         val normalizedHost = DomainBlocking.normalize(host) ?: return false
+        if (snap.blockAdultWebsites && AdultContentBlocking.matches(normalizedHost)) {
+            return true
+        }
+        if (snap.domains.isEmpty()) return false
         val matchesRule = snap.domains.any { DomainBlocking.matches(normalizedHost, it) }
         return if (snap.isAllowModeDomains) {
             !matchesRule

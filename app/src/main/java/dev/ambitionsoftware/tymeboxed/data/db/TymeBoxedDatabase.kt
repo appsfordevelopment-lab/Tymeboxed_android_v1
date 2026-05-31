@@ -22,7 +22,7 @@ import dev.ambitionsoftware.tymeboxed.data.db.entities.TagEntity
         SessionEntity::class,
         TagEntity::class,
     ],
-    version = 5,
+    version = 6,
     // Schemas are exported to app/schemas (configured via the
     // room.schemaLocation KSP arg in app/build.gradle.kts) and committed to
     // git so migrations can be reviewed and tested per version bump.

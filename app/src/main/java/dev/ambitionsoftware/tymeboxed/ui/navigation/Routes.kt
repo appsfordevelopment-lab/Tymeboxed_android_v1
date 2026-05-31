@@ -13,6 +13,19 @@ object Routes {
     const val IN_APP_BLOCKING = "in_app_blocking"
     const val PERMISSIONS = "permissions"
 
+    /** Foqos-style 9-step profile creation wizard. */
+    const val PROFILE_ONBOARD = "profile_onboard/{profileId}"
+    fun profileOnboard(profileId: String = "new") = "profile_onboard/$profileId"
+
+    const val PROFILE_ONBOARD_SELECT_APPS = "profile_onboard/{profileId}/select_apps"
+    fun profileOnboardSelectApps(profileId: String = "new") = "profile_onboard/$profileId/select_apps"
+
+    const val PROFILE_ONBOARD_SELECT_DOMAINS = "profile_onboard/{profileId}/select_domains"
+    fun profileOnboardSelectDomains(profileId: String = "new") = "profile_onboard/$profileId/select_domains"
+
+    const val PROFILE_ONBOARD_SCHEDULE = "profile_onboard/{profileId}/schedule"
+    fun profileOnboardSchedule(profileId: String = "new") = "profile_onboard/$profileId/schedule"
+
     /** Profile create / edit. */
     const val PROFILE_EDIT = "profile_edit/{profileId}"
     fun profileEdit(profileId: String = "new") = "profile_edit/$profileId"

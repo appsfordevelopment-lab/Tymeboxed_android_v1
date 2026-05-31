@@ -45,6 +45,7 @@ data class ProfileEditUiState(
     val name: String = "",
     val strategyId: String = BlockingStrategyId.DEFAULT,
     val timerMinutes: Int = 25,
+    val breakTimeInMinutes: Int = 15,
     val enableStrictMode: Boolean = true,
     val enableLiveActivity: Boolean = false,
     val enableReminder: Boolean = false,
@@ -52,6 +53,7 @@ data class ProfileEditUiState(
     val customReminderMessage: String = "",
     val isAllowMode: Boolean = false,
     val isAllowModeDomains: Boolean = false,
+    val blockAdultWebsites: Boolean = true,
     val domains: List<String> = emptyList(),
     val schedule: ProfileSchedule = ProfileSchedule.inactive(),
     val blockedPackages: Set<String> = emptySet(),
@@ -149,6 +151,7 @@ class ProfileEditViewModel @Inject constructor(
                     name = profile.name,
                     strategyId = profile.strategyId,
                     timerMinutes = timerMinutes,
+                    breakTimeInMinutes = profile.breakTimeInMinutes,
                     enableStrictMode = profile.enableStrictMode,
                     enableLiveActivity = profile.enableLiveActivity,
                     enableReminder = profile.isSessionReminderEnabled(),
@@ -156,6 +159,7 @@ class ProfileEditViewModel @Inject constructor(
                     customReminderMessage = profile.customReminderMessage ?: "",
                     isAllowMode = false,
                     isAllowModeDomains = profile.isAllowModeDomains,
+                    blockAdultWebsites = profile.blockAdultWebsites,
                     domains = profile.domains,
                     schedule = profile.schedule ?: ProfileSchedule.inactive(),
                     blockedPackages = if (migratedAppAllowMode) emptySet() else profile.blockedPackages.toSet(),
@@ -218,6 +222,10 @@ class ProfileEditViewModel @Inject constructor(
         _state.update { it.copy(timerMinutes = minutes.coerceIn(1, 480)) }
     }
 
+    fun onBreakTimeChange(minutes: Int) {
+        _state.update { it.copy(breakTimeInMinutes = minutes.coerceIn(5, 60)) }
+    }
+
     fun onStrictModeChange(enabled: Boolean) {
         _state.update { it.copy(enableStrictMode = enabled) }
     }
@@ -243,6 +251,10 @@ class ProfileEditViewModel @Inject constructor(
 
     fun onAllowModeDomainsChange(enabled: Boolean) {
         _state.update { it.copy(isAllowModeDomains = enabled, domains = emptyList()) }
+    }
+
+    fun onBlockAdultWebsitesChange(enabled: Boolean) {
+        _state.update { it.copy(blockAdultWebsites = enabled) }
     }
 
     fun onToggleApp(packageName: String) {
@@ -330,8 +342,11 @@ class ProfileEditViewModel @Inject constructor(
             _state.update { it.copy(errorMessage = "Profile name is required") }
             return
         }
-        if (current.blockedPackages.isEmpty() && current.domains.isEmpty()) {
-            _state.update { it.copy(errorMessage = "Select at least one app or domain") }
+        if (current.blockedPackages.isEmpty() &&
+            current.domains.isEmpty() &&
+            !current.blockAdultWebsites
+        ) {
+            _state.update { it.copy(errorMessage = "Select at least one app, domain, or adult-site blocking") }
             return
         }
         _state.update { it.copy(isSaving = true, errorMessage = null) }
@@ -352,7 +367,7 @@ class ProfileEditViewModel @Inject constructor(
                     },
                     enableStrictMode = current.enableStrictMode,
                     enableBreaks = current.strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK,
-                    breakTimeInMinutes = loadedProfile?.breakTimeInMinutes ?: 15,
+                    breakTimeInMinutes = current.breakTimeInMinutes,
                     enableLiveActivity = current.enableLiveActivity,
                     reminderTimeSeconds = if (current.enableReminder) {
                         current.reminderTimeMinutes * 60
@@ -360,6 +375,7 @@ class ProfileEditViewModel @Inject constructor(
                     customReminderMessage = current.customReminderMessage.ifBlank { null },
                     isAllowMode = false,
                     isAllowModeDomains = current.isAllowModeDomains,
+                    blockAdultWebsites = current.blockAdultWebsites,
                     domains = current.domains,
                     schedule = current.schedule.takeIf { it.isActive },
                     blockedPackages = current.blockedPackages.toList(),
@@ -407,8 +423,11 @@ class ProfileEditViewModel @Inject constructor(
             _state.update { it.copy(errorMessage = "Profile name is required") }
             return
         }
-        if (current.blockedPackages.isEmpty() && current.domains.isEmpty()) {
-            _state.update { it.copy(errorMessage = "Select at least one app or domain") }
+        if (current.blockedPackages.isEmpty() &&
+            current.domains.isEmpty() &&
+            !current.blockAdultWebsites
+        ) {
+            _state.update { it.copy(errorMessage = "Select at least one app, domain, or adult-site blocking") }
             return
         }
         viewModelScope.launch {
@@ -432,7 +451,7 @@ class ProfileEditViewModel @Inject constructor(
                     },
                     enableStrictMode = current.enableStrictMode,
                     enableBreaks = current.strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK,
-                    breakTimeInMinutes = loadedProfile?.breakTimeInMinutes ?: 15,
+                    breakTimeInMinutes = current.breakTimeInMinutes,
                     enableLiveActivity = current.enableLiveActivity,
                     reminderTimeSeconds = if (current.enableReminder) {
                         current.reminderTimeMinutes * 60
@@ -442,6 +461,7 @@ class ProfileEditViewModel @Inject constructor(
                     customReminderMessage = current.customReminderMessage.ifBlank { null },
                     isAllowMode = false,
                     isAllowModeDomains = current.isAllowModeDomains,
+                    blockAdultWebsites = current.blockAdultWebsites,
                     domains = current.domains,
                     schedule = current.schedule.takeIf { it.isActive },
                     blockedPackages = current.blockedPackages.toList(),
@@ -503,6 +523,7 @@ private data class PersistedFormState(
     val name: String,
     val strategyId: String,
     val timerMinutes: Int,
+    val breakTimeInMinutes: Int,
     val enableStrictMode: Boolean,
     val enableLiveActivity: Boolean,
     val enableReminder: Boolean,
@@ -510,6 +531,7 @@ private data class PersistedFormState(
     val customReminderMessage: String,
     val isAllowMode: Boolean,
     val isAllowModeDomains: Boolean,
+    val blockAdultWebsites: Boolean,
     val domains: List<String>,
     val schedule: ProfileSchedule,
     val blockedPackages: List<String>,
@@ -521,6 +543,7 @@ private data class PersistedFormState(
             name = name,
             strategyId = strategyId,
             timerMinutes = timerMinutes,
+            breakTimeInMinutes = breakTimeInMinutes,
             enableStrictMode = enableStrictMode,
             enableLiveActivity = enableLiveActivity,
             enableReminder = enableReminder,
@@ -528,6 +551,7 @@ private data class PersistedFormState(
             customReminderMessage = customReminderMessage,
             isAllowMode = false,
             isAllowModeDomains = isAllowModeDomains,
+            blockAdultWebsites = blockAdultWebsites,
             domains = domains,
             schedule = schedule,
             blockedPackages = packages,
@@ -544,6 +568,7 @@ private data class PersistedFormState(
             name = state.name,
             strategyId = state.strategyId,
             timerMinutes = state.timerMinutes,
+            breakTimeInMinutes = state.breakTimeInMinutes,
             enableStrictMode = state.enableStrictMode,
             enableLiveActivity = state.enableLiveActivity,
             enableReminder = state.enableReminder,
@@ -551,6 +576,7 @@ private data class PersistedFormState(
             customReminderMessage = state.customReminderMessage,
             isAllowMode = false,
             isAllowModeDomains = state.isAllowModeDomains,
+            blockAdultWebsites = state.blockAdultWebsites,
             domains = state.domains,
             schedule = state.schedule,
             blockedPackages = state.blockedPackages.toList(),

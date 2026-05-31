@@ -20,6 +20,7 @@ import dev.ambitionsoftware.tymeboxed.ui.screens.intro.IntroScreen
 import dev.ambitionsoftware.tymeboxed.ui.screens.permissions.PermissionsScreen
 import dev.ambitionsoftware.tymeboxed.ui.screens.profile.ProfileEditScreen
 import dev.ambitionsoftware.tymeboxed.ui.screens.profile.SchedulePickerScreen
+import dev.ambitionsoftware.tymeboxed.ui.screens.profile.onboarding.ProfileOnboardingScreen
 import dev.ambitionsoftware.tymeboxed.ui.screens.inapp.InAppBlockingScreen
 import dev.ambitionsoftware.tymeboxed.ui.screens.settings.SettingsScreen
 
@@ -72,7 +73,8 @@ fun TymeBoxedNavHost(
         composable(Routes.HOME) {
             HomeScreen(
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                onCreateProfile = { navController.navigate(Routes.profileEdit()) },
+                onCreateProfile = { navController.navigate(Routes.profileOnboard()) },
+                onOpenFullProfileEditor = { navController.navigate(Routes.profileEdit()) },
                 onEditProfile = { id -> navController.navigate(Routes.profileEdit(id)) },
             )
         }
@@ -98,6 +100,86 @@ fun TymeBoxedNavHost(
 
         composable(Routes.PERMISSIONS) {
             PermissionsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.PROFILE_ONBOARD,
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val profileId = backStackEntry.arguments?.getString("profileId") ?: "new"
+            ProfileOnboardingScreen(
+                onClose = { navController.popBackStack() },
+                onComplete = {
+                    navController.popBackStack(Routes.HOME, inclusive = false)
+                },
+                onOpenBlockedApps = {
+                    navController.navigate(Routes.profileOnboardSelectApps(profileId))
+                },
+                onOpenBlockedDomains = {
+                    navController.navigate(Routes.profileOnboardSelectDomains(profileId))
+                },
+                onOpenSchedule = {
+                    navController.navigate(Routes.profileOnboardSchedule(profileId))
+                },
+                onOpenFullEditor = {
+                    navController.navigate(Routes.profileEdit(profileId)) {
+                        popUpTo(Routes.profileOnboard(profileId)) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable(
+            route = Routes.PROFILE_ONBOARD_SELECT_APPS,
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+            ),
+        ) { childEntry ->
+            val profileId = childEntry.arguments?.getString("profileId") ?: "new"
+            val parentEntry = remember(childEntry) {
+                navController.getBackStackEntry(Routes.profileOnboard(profileId))
+            }
+            val vm: ProfileEditViewModel = hiltViewModel(parentEntry)
+            BlockedAppsPickerScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.PROFILE_ONBOARD_SELECT_DOMAINS,
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+            ),
+        ) { childEntry ->
+            val profileId = childEntry.arguments?.getString("profileId") ?: "new"
+            val parentEntry = remember(childEntry) {
+                navController.getBackStackEntry(Routes.profileOnboard(profileId))
+            }
+            val vm: ProfileEditViewModel = hiltViewModel(parentEntry)
+            BlockedDomainsPickerScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.PROFILE_ONBOARD_SCHEDULE,
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+            ),
+        ) { childEntry ->
+            val profileId = childEntry.arguments?.getString("profileId") ?: "new"
+            val parentEntry = remember(childEntry) {
+                navController.getBackStackEntry(Routes.profileOnboard(profileId))
+            }
+            val vm: ProfileEditViewModel = hiltViewModel(parentEntry)
+            SchedulePickerScreen(
+                viewModel = vm,
                 onBack = { navController.popBackStack() },
             )
         }
