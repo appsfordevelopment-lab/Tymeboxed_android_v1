@@ -164,10 +164,10 @@
                     android:host="foqos.app"
                     android:pathPrefix="/profile/" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.nfc.action.TAG_DISCOVERED" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            <!-- Do NOT register ACTION_TAG_DISCOVERED: it matches every NFC tag (payment
+                 cards, transit passes, etc.) and launches MainActivity when Reader Mode is
+                 off (app in background). Tyme Boxed tags use NDEF (filters above); in-app
+                 scans use Reader Mode in MainActivity / NfcIosStyleScanSheet. -->
         </activity>
 
         <!-- Blocking engine stubs (full implementation lands in Phase 3). -->

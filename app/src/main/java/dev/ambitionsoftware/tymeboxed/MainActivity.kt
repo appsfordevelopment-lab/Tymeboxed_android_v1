@@ -221,6 +221,13 @@ class MainActivity : ComponentActivity() {
             if (BuildConfig.DEBUG) {
                 Log.i(TAG, "Intercepted VIEW intent (likely NFC URL): data=$data")
             }
+            if (ActiveBlockingState.current.isBlocking) {
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "Swallowing VIEW NFC during session (no UI): data=$data")
+                }
+                dismissNfcWithoutUi(isColdStart)
+                return true
+            }
             Toast.makeText(this, "NFC link ignored.", Toast.LENGTH_SHORT).show()
             if (isColdStart) {
                 finishAndRemoveTaskCompat()
@@ -234,32 +241,43 @@ class MainActivity : ComponentActivity() {
             action != NfcAdapter.ACTION_TECH_DISCOVERED
         ) return false
 
-        // Only allow NFC to affect the app while a focus session is active.
-        // When no session is active, we swallow the NFC intent so the user doesn't end up
-        // in a random deep-link (e.g. URL NDEF records opening a browser) or a blank activity.
-        if (!ActiveBlockingState.current.isBlocking) {
+        // Manifest-delivered NFC while a session is active (app was in background; Reader
+        // Mode is off). Do not bring Tyme Boxed to the foreground for random tags (payment
+        // cards, etc.). In-app stop/start uses NfcIosStyleScanSheet + Reader Mode instead.
+        if (ActiveBlockingState.current.isBlocking) {
+            val tag: Tag? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+            }
+            val uid = tag?.id?.joinToString(":") { "%02x".format(it) } ?: "unknown"
             if (BuildConfig.DEBUG) {
-                Log.i(TAG, "Ignoring NFC intent (no active session): action=$action")
+                Log.i(TAG, "Swallowing NFC intent during session (no UI): uid=$uid, action=$action")
             }
-            Toast.makeText(this, "No active session. NFC scan ignored.", Toast.LENGTH_SHORT).show()
-            if (isColdStart) {
-                finishAndRemoveTaskCompat()
-                return true
-            }
-            return false
+            dismissNfcWithoutUi(isColdStart)
+            return true
         }
 
-        // Phase 1: just log the tag UID. Phase 4 routes this into the
-        // strategy coordinator so scanning a tag starts / stops a session.
-        val tag: Tag? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+        // No active session: swallow so URL / blank-tag scans never surface the app.
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "Ignoring NFC intent (no active session): action=$action")
         }
-        val uid = tag?.id?.joinToString(":") { "%02x".format(it) } ?: "unknown"
-        Log.i(TAG, "NFC tag scanned (Phase 1 stub): uid=$uid, action=$action")
+        Toast.makeText(this, "No active session. NFC scan ignored.", Toast.LENGTH_SHORT).show()
+        if (isColdStart) {
+            finishAndRemoveTaskCompat()
+            return true
+        }
         return false
+    }
+
+    /** Closes or backgrounds the task without showing the main UI after an OS NFC launch. */
+    private fun dismissNfcWithoutUi(isColdStart: Boolean) {
+        if (isColdStart) {
+            finishAndRemoveTaskCompat()
+        } else {
+            moveTaskToBack(true)
+        }
     }
 
     private fun handleNfcTagFromReaderMode(tag: Tag) {
@@ -283,8 +301,9 @@ class MainActivity : ComponentActivity() {
                     Log.i(TAG, "Ignoring NFC scan (no active session) via ReaderMode: uid=$uid")
                 }
                 Toast.makeText(this, "No active session. NFC scan ignored.", Toast.LENGTH_SHORT).show()
-            } else {
-                Log.i(TAG, "NFC tag scanned (ReaderMode): uid=$uid")
+            } else if (BuildConfig.DEBUG) {
+                // Reader Mode while foreground: ignore non–Tyme Boxed tags silently (e.g. wallet cards).
+                Log.i(TAG, "NFC scan during session (ReaderMode, ignored): uid=$uid")
             }
         }
     }

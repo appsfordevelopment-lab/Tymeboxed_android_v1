@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -85,6 +86,7 @@ fun ProfileOnboardingScreen(
     val vm: ProfileEditViewModel = hiltViewModel()
     val state by vm.state.collectAsState()
     var stepIndex by rememberSaveable { mutableIntStateOf(0) }
+    var appsRequiredWarning by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (stepIndex >= TOTAL_STEPS) {
@@ -133,8 +135,15 @@ fun ProfileOnboardingScreen(
         if (prev < 0) onClose() else stepIndex = prev
     }
 
+    LaunchedEffect(state.blockedPackages.size) {
+        if (state.blockedPackages.isNotEmpty()) {
+            appsRequiredWarning = false
+        }
+    }
+
     val nextEnabled = when (step) {
         OnboardStep.NAME -> state.name.isNotBlank()
+        OnboardStep.APPS -> state.blockedPackages.isNotEmpty()
         OnboardStep.REVIEW -> !state.isSaving
         else -> true
     }
@@ -145,6 +154,13 @@ fun ProfileOnboardingScreen(
     }
 
     val onNext: () -> Unit = when (step) {
+        OnboardStep.APPS -> ({
+            if (state.blockedPackages.isEmpty()) {
+                appsRequiredWarning = true
+            } else {
+                advance()
+            }
+        })
         OnboardStep.REVIEW -> ({ vm.save() })
         else -> ({ advance() })
     }
@@ -158,6 +174,7 @@ fun ProfileOnboardingScreen(
         onClose = onClose,
         nextLabel = nextLabel,
         nextEnabled = nextEnabled && !state.isSaving,
+        allowNextWhenDisabled = step == OnboardStep.APPS,
         onNext = onNext,
     ) {
         when (step) {
@@ -171,6 +188,7 @@ fun ProfileOnboardingScreen(
             )
             OnboardStep.APPS -> AppsStepContent(
                 selectedCount = state.blockedPackages.size,
+                showRequiredWarning = appsRequiredWarning && state.blockedPackages.isEmpty(),
                 onOpenApps = onOpenBlockedApps,
             )
             OnboardStep.DOMAINS -> DomainsStepContent(
@@ -424,20 +442,33 @@ private fun OnboardingStrategyRow(
 @Composable
 private fun AppsStepContent(
     selectedCount: Int,
+    showRequiredWarning: Boolean,
     onOpenApps: () -> Unit,
 ) {
+    val cs = MaterialTheme.colorScheme
     val subtitle = when (selectedCount) {
         0 -> "No apps selected"
         1 -> "1 item selected"
         else -> "$selectedCount items selected"
     }
-    OnboardingSettingsCard {
-        OnboardingNavRow(
-            title = "Select Apps to Restrict",
-            subtitle = subtitle,
-            onClick = onOpenApps,
-            showDividerBelow = false,
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OnboardingSettingsCard {
+            OnboardingNavRow(
+                title = "Select Apps to Restrict",
+                subtitle = subtitle,
+                onClick = onOpenApps,
+                showDividerBelow = false,
+            )
+        }
+        if (selectedCount == 0 && showRequiredWarning) {
+            Text(
+                text = "Select any one app to proceed",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = cs.error,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
     }
 }
 

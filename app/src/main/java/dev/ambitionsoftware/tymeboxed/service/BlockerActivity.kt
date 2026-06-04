@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dagger.hilt.android.EntryPointAccessors
 import dev.ambitionsoftware.tymeboxed.di.ThemeEntryPoint
+import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import dev.ambitionsoftware.tymeboxed.domain.ShieldBlockMessage
 import dev.ambitionsoftware.tymeboxed.domain.ShieldMessages
 
@@ -188,7 +189,7 @@ class BlockerActivity : ComponentActivity() {
         private var pendingBackNavigation: PendingBackNavigation? = null
 
         /** Opened when the user dismisses a blocked-domain shield (Brick-style marketing redirect). */
-        private const val BLOCKED_DOMAIN_DISMISS_URL = "https://tymeboxed.app/"
+        private val BLOCKED_DOMAIN_DISMISS_URL = WebsiteUrls.home
 
         @Volatile
         var isVisible: Boolean = false

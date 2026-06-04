@@ -108,6 +108,7 @@ import dev.ambitionsoftware.tymeboxed.ui.components.ActionButton
 import dev.ambitionsoftware.tymeboxed.ui.components.PermissionRow
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCard
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCardDivider
+import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import dev.ambitionsoftware.tymeboxed.util.toDisplayMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -369,7 +370,7 @@ private fun WelcomeStep(onContinue: () -> Unit) {
                 Button(
                     onClick = {
                         context.startActivity(
-                            Intent(Intent.ACTION_VIEW, "https://www.tymeboxed.app/".toUri()),
+                            Intent(Intent.ACTION_VIEW, WebsiteUrls.home.toUri()),
                         )
                     },
                     modifier = Modifier
@@ -429,7 +430,7 @@ private fun IntroLegalFooter(
         ) {
             append("By continuing, you agree to our ")
         }
-        pushLink(LinkAnnotation.Url("https://www.tymeboxed.app/terms", styles = linkStyles))
+        pushLink(LinkAnnotation.Url(WebsiteUrls.terms, styles = linkStyles))
         append("Terms")
         pop()
         withStyle(
@@ -440,7 +441,7 @@ private fun IntroLegalFooter(
         ) {
             append(" and ")
         }
-        pushLink(LinkAnnotation.Url("https://www.tymeboxed.app/privacy", styles = linkStyles))
+        pushLink(LinkAnnotation.Url(WebsiteUrls.privacy, styles = linkStyles))
         append("Privacy Policy")
         pop()
     }
@@ -986,7 +987,7 @@ private fun ConnectExplainerStep(
                 append("Your information stays private and stored only on your device. ")
                 pushLink(
                     LinkAnnotation.Url(
-                        "https://www.tymeboxed.app/privacy",
+                        WebsiteUrls.privacy,
                         styles = TextLinkStyles(
                             style = SpanStyle(
                                 color = p.link,

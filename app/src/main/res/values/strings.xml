@@ -5,12 +5,14 @@
     <string name="blocked_apps_search_hint">Search apps</string>
     <string name="blocked_apps_loading">Loading apps…</string>
     <string name="blocked_apps_no_match">No apps match your search</string>
-    <string name="blocked_domains_picker_title">Select domains to restrict</string>
-    <string name="blocked_domains_search_hint">Search added domains</string>
-    <string name="blocked_domains_add_label">Add domain</string>
+    <string name="blocked_domains_picker_title">Blocked websites</string>
+    <string name="blocked_domains_search_hint">Search websites</string>
+    <string name="blocked_domains_intro">Let\u2019s add few common websites here</string>
+    <string name="blocked_domains_popular_section">Popular websites</string>
+    <string name="blocked_domains_added_section">Added websites</string>
+    <string name="blocked_domains_done">Done</string>
     <string name="blocked_domains_picker_allow_mode_hint">Domain allow mode is on - only listed sites stay allowed; all other web traffic is treated as out of focus.</string>
-    <string name="blocked_domains_no_match">No domains match your search</string>
-    <string name="blocked_domains_empty_hint">No domains yet. Type a host (e.g. example.com) and tap + to add it.</string>
+    <string name="blocked_domains_no_match">No websites match your search</string>
     <string name="cd_remove_domain">Remove domain</string>
 
     <!-- Accessibility service surface strings (shown in system Settings > Accessibility) -->
@@ -108,6 +110,7 @@
     <string name="strict_mode_title">Strict mode</string>
     <string name="strict_mode_settings_subtitle">Stops you from uninstalling Tyme Boxed mid-session. Requires Admin access.</string>
     <string name="strict_mode_settings_subtitle_session_active">Locked while a focus session is running. End the session to change this.</string>
+    <string name="delete_account_disabled_session_active">End your focus session before deleting your account.</string>
     <string name="strict_mode_admin_dialog_title">Lock yourself in</string>
     <string name="strict_mode_admin_dialog_body">Strict mode stops you from uninstalling Tyme Boxed during a session - so future-you can’t bail.</string>
     <string name="strict_mode_admin_dialog_footnote">Needs Device Admin access, which you can turn off anytime.</string>
@@ -117,7 +120,10 @@
     <string name="strict_mode_disable_keep_on">Keep it on</string>
     <string name="strict_mode_disable_confirm">Turn off</string>
 
-    <string name="emergency_access_title">Emergency Access</string>
+    <string name="emergency_access_title">Emergency</string>
+    <string name="emergency_resets_on">Resets %1$s</string>
+    <string name="emergency_reset_period_weeks">%1$d weeks</string>
+    <string name="emergency_reset_period_settings_cd">Emergency reset period</string>
     <string name="emergency_access_hint">Tap the glass to reveal the emergency unblock button. Use only when absolutely necessary.</string>
     <string name="emergency_access_hint_revealed">Use only when absolutely necessary. Each emergency unblock ends your focus session without scanning your device.</string>
     <plurals name="emergency_glass_taps_remaining">

@@ -71,6 +71,7 @@ import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCard
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCardDivider
 import androidx.compose.ui.res.stringResource
 import dev.ambitionsoftware.tymeboxed.R
+import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCardDivider
@@ -151,8 +152,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun deleteAllData(onSuccess: () -> Unit = {}) {
+        if (ActiveBlockingState.current.isBlocking) return
         viewModelScope.launch {
             runCatching {
+                if (sessionRepository.findActive() != null) return@runCatching
                 ActiveBlockingState.deactivate()
                 sessionRepository.resetActive()
                 appContext.startService(SessionBlockerService.stopIntent(appContext))
@@ -265,7 +268,7 @@ fun SettingsScreen(
                         ctx.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                "https://www.tymeboxed.app/".toUri(),
+                                WebsiteUrls.home.toUri(),
                             ),
                         )
                     }
@@ -314,6 +317,7 @@ fun SettingsScreen(
             )
 
             DangerCard(
+                enabled = !isSessionActive,
                 onDeleteAccountClick = { showDeleteAccountDialog = true },
             )
 
@@ -649,29 +653,53 @@ private fun LabelRow(
 }
 
 @Composable
-private fun DangerCard(onDeleteAccountClick: () -> Unit) {
+private fun DangerCard(
+    enabled: Boolean,
+    onDeleteAccountClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val actionColor = if (enabled) cs.error else cs.onSurfaceVariant.copy(alpha = 0.45f)
     SettingsCard(title = null, elevation = 0.dp) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onDeleteAccountClick() }
+                .then(
+                    if (enabled) {
+                        Modifier.clickable { onDeleteAccountClick() }
+                    } else {
+                        Modifier
+                    },
+                )
                 .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(22.dp),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "Delete Account",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = actionColor,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Delete Account",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = actionColor,
+                )
+            }
+            if (!enabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.delete_account_disabled_session_active),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
         }
     }
 }

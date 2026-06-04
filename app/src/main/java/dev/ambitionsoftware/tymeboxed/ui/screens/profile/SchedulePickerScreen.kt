@@ -59,6 +59,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import dev.ambitionsoftware.tymeboxed.domain.model.ProfileSchedule
 import dev.ambitionsoftware.tymeboxed.ui.theme.LocalAccentColor
+import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import java.text.DateFormatSymbols
 import java.util.Calendar
 private val calendarWeekdays = listOf(
@@ -96,9 +97,6 @@ private fun fallbackWeekdayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
 
 private val minuteSteps = (0..55 step 5).toList()
 private val hours12 = (1..12).toList()
-
-/** Help / Shortcuts video — update when a dedicated URL exists. */
-private const val ShortcutsHelpUrl = "https://www.tymeboxed.app/"
 
 /**
  * Full-screen schedule editor — mirrors iOS [SchedulePicker].
@@ -187,7 +185,7 @@ fun SchedulePickerScreen(
             }
             pushLink(
                 LinkAnnotation.Url(
-                    ShortcutsHelpUrl,
+                    WebsiteUrls.shortcutsHelp,
                     styles = TextLinkStyles(
                         style = SpanStyle(
                             color = linkBlue,

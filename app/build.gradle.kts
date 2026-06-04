@@ -66,6 +66,11 @@ android {
             "TYMEBOXED_API_BASE_URL",
             "\"https://api.tymeboxed.app\"",
         )
+        buildConfigField(
+            "String",
+            "TYMEBOXED_WEB_BASE_URL",
+            "\"https://tymeboxed.app\"",
+        )
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
 
         // Play Console: embed native debug symbols in release AABs (required when .so libs are packaged).

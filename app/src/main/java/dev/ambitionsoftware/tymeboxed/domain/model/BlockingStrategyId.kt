@@ -31,6 +31,7 @@ enum class StrategyTag(val label: String) {
     DEVICE("Device"),
     MANUAL("Manual"),
     TIMER("Timer"),
+    FOREVER("Forever"),
     BREAK("Break"),
 }
 
@@ -62,10 +63,10 @@ val availableStrategies: List<StrategyInfo> = listOf(
     StrategyInfo(
         id = BlockingStrategyId.NFC_MANUAL_START,
         name = "Manual start, tap to unlock",
-        description = "Start a session from the app. Scan your tag to end it.",
+        description = "Start a session from the app. Scan your device to end it.",
         icon = "nfc",
         color = Color(0xFFF5A623), // yellow
-        tags = listOf(StrategyTag.DEVICE, StrategyTag.MANUAL),
+        tags = listOf(StrategyTag.MANUAL),
     ),
     StrategyInfo(
         id = BlockingStrategyId.FOCUS_TIMER,
@@ -73,15 +74,15 @@ val availableStrategies: List<StrategyInfo> = listOf(
         description = "Set a focus duration. Blocks end automatically - scan to end early.",
         icon = "timer",
         color = Color(0xFF4CD9AC), // mint
-        tags = listOf(StrategyTag.DEVICE, StrategyTag.TIMER),
+        tags = listOf(StrategyTag.TIMER),
     ),
     StrategyInfo(
         id = BlockingStrategyId.FOCUS_TIMER_BREAK,
-        name = "Session with break",
-        description = "Set break duration. Scan once for a break, scan again to stop.",
+        name = "Forever session with break",
+        description = "Forever session. Scan once for break, scan again to stop.",
         icon = "pause",
         color = Color(0xFFFF9500), // orange
-        tags = listOf(StrategyTag.DEVICE, StrategyTag.TIMER, StrategyTag.BREAK),
+        tags = listOf(StrategyTag.FOREVER, StrategyTag.BREAK),
     ),
     StrategyInfo(
         id = BlockingStrategyId.MANUAL,

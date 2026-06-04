@@ -53,7 +53,7 @@ data class ProfileEditUiState(
     val customReminderMessage: String = "",
     val isAllowMode: Boolean = false,
     val isAllowModeDomains: Boolean = false,
-    val blockAdultWebsites: Boolean = true,
+    val blockAdultWebsites: Boolean = false,
     val domains: List<String> = emptyList(),
     val schedule: ProfileSchedule = ProfileSchedule.inactive(),
     val blockedPackages: Set<String> = emptySet(),
@@ -325,6 +325,18 @@ class ProfileEditViewModel @Inject constructor(
 
     fun onRemoveDomain(domain: String) {
         _state.update { s -> s.copy(domains = s.domains - domain) }
+    }
+
+    fun onToggleDomain(domain: String) {
+        _state.update { s ->
+            if (domain in s.domains) {
+                s.copy(domains = s.domains - domain, errorMessage = null)
+            } else if (s.domains.size >= MAX_DOMAINS_PER_PROFILE) {
+                s.copy(errorMessage = "You can block at most $MAX_DOMAINS_PER_PROFILE domains per profile")
+            } else {
+                s.copy(domains = s.domains + domain, errorMessage = null)
+            }
+        }
     }
 
     fun updateSchedule(schedule: ProfileSchedule) {

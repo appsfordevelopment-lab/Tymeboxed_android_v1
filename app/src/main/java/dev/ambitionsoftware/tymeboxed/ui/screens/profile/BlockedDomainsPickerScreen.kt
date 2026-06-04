@@ -1,11 +1,16 @@
 package dev.ambitionsoftware.tymeboxed.ui.screens.profile
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,9 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,14 +43,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.ambitionsoftware.tymeboxed.R
+import dev.ambitionsoftware.tymeboxed.domain.popularBlockedDomains
 
 /**
- * Full-screen domain editor (parity with [BlockedAppsPickerScreen]): search,
- * add, and remove — shares [ProfileEditViewModel] with [ProfileEditScreen].
+ * Full-screen blocked-websites picker — popular hosts with checkboxes and Done.
+ * Shares [ProfileEditViewModel] with [ProfileEditScreen].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,15 +63,20 @@ fun BlockedDomainsPickerScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var newDomain by rememberSaveable { mutableStateOf("") }
     val cs = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+    val rowCardBg = if (isDark) Color(0xFF2C2C2E) else Color.White
 
-    val filtered = remember(state.domains, searchQuery) {
-        val list = state.domains
-        if (searchQuery.isBlank()) list
-        else list.filter {
-            it.contains(searchQuery, ignoreCase = true)
-        }
+    val filteredPopular = remember(searchQuery) {
+        if (searchQuery.isBlank()) popularBlockedDomains
+        else popularBlockedDomains.filter { it.contains(searchQuery, ignoreCase = true) }
+    }
+    val customDomains = remember(state.domains) {
+        state.domains.filter { it !in popularBlockedDomains }
+    }
+    val filteredCustom = remember(customDomains, searchQuery) {
+        if (searchQuery.isBlank()) customDomains
+        else customDomains.filter { it.contains(searchQuery, ignoreCase = true) }
     }
 
     Scaffold(
@@ -71,6 +87,7 @@ fun BlockedDomainsPickerScreen(
                     Text(
                         text = stringResource(R.string.blocked_domains_picker_title),
                         style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 },
                 navigationIcon = {
@@ -82,7 +99,7 @@ fun BlockedDomainsPickerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = cs.surface,
+                    containerColor = cs.background,
                     titleContentColor = cs.onSurface,
                     navigationIconContentColor = cs.onSurface,
                 ),
@@ -93,8 +110,7 @@ fun BlockedDomainsPickerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp)
-                .padding(top = 16.dp),
+                .padding(horizontal = 16.dp),
         ) {
             if (state.isAllowModeDomains) {
                 Text(
@@ -117,7 +133,7 @@ fun BlockedDomainsPickerScreen(
                 },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = cs.surfaceVariant,
                     unfocusedContainerColor = cs.surfaceVariant,
@@ -128,91 +144,104 @@ fun BlockedDomainsPickerScreen(
                     cursorColor = cs.primary,
                 ),
             )
+            Spacer(modifier = Modifier.size(16.dp))
+            Text(
+                text = stringResource(R.string.blocked_domains_intro),
+                style = MaterialTheme.typography.bodyLarge,
+                color = cs.onSurface,
+            )
             Spacer(modifier = Modifier.size(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = newDomain,
-                    onValueChange = { newDomain = it },
-                    placeholder = { Text("example.com") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = cs.surfaceVariant,
-                        unfocusedContainerColor = cs.surfaceVariant,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = cs.onSurface,
-                        unfocusedTextColor = cs.onSurface,
-                        cursorColor = cs.primary,
-                    ),
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                IconButton(
-                    onClick = {
-                        viewModel.onAddDomain(newDomain)
-                        newDomain = ""
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = stringResource(R.string.blocked_domains_add_label),
-                        tint = cs.primary,
-                    )
-                }
-            }
+            Text(
+                text = stringResource(R.string.blocked_domains_popular_section),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurfaceVariant,
+            )
             Spacer(modifier = Modifier.size(8.dp))
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f),
             ) {
-                when {
-                    state.domains.isEmpty() -> item {
-                        Text(
-                            text = stringResource(R.string.blocked_domains_empty_hint),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                    filtered.isEmpty() -> item {
+                if (filteredPopular.isEmpty() && filteredCustom.isEmpty()) {
+                    item {
                         Text(
                             text = stringResource(R.string.blocked_domains_no_match),
                             style = MaterialTheme.typography.bodyMedium,
                             color = cs.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(vertical = 16.dp),
                         )
                     }
-                    else -> items(
-                        items = filtered,
-                        key = { it },
-                    ) { domain ->
-                        DomainListRow(
+                } else {
+                    items(filteredPopular, key = { it }) { domain ->
+                        PopularDomainRow(
                             domain = domain,
-                            onRemove = { viewModel.onRemoveDomain(domain) },
+                            isSelected = domain in state.domains,
+                            cardBackground = rowCardBg,
+                            onToggle = { viewModel.onToggleDomain(domain) },
                         )
+                    }
+                    if (filteredCustom.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(
+                                text = stringResource(R.string.blocked_domains_added_section),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = cs.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(filteredCustom, key = { "custom-$it" }) { domain ->
+                            PopularDomainRow(
+                                domain = domain,
+                                isSelected = true,
+                                cardBackground = rowCardBg,
+                                onToggle = { viewModel.onRemoveDomain(domain) },
+                                showRemove = true,
+                            )
+                        }
                     }
                 }
+            }
+            Button(
+                onClick = onBack,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(vertical = 16.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(26.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = cs.onBackground,
+                    contentColor = cs.background,
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.blocked_domains_done),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun DomainListRow(
+private fun PopularDomainRow(
     domain: String,
-    onRemove: () -> Unit,
+    isSelected: Boolean,
+    cardBackground: Color,
+    onToggle: () -> Unit,
+    showRemove: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBackground)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -221,11 +250,21 @@ private fun DomainListRow(
             color = cs.onSurface,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onRemove) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.cd_remove_domain),
-                tint = cs.onSurfaceVariant,
+        if (showRemove) {
+            IconButton(onClick = onToggle) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.cd_remove_domain),
+                    tint = cs.onSurfaceVariant,
+                )
+            }
+        } else {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = cs.primary,
+                ),
             )
         }
     }

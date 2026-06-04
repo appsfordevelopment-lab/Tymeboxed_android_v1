@@ -75,6 +75,13 @@ class AppPreferences @Inject constructor(
     val emergencyUnblocksRemaining: Flow<Int> =
         context.dataStore.data.map { it[KEY_EMERGENCY_UNBLOCKS_REMAINING] ?: DEFAULT_EMERGENCY_UNBLOCKS }
 
+    val emergencyResetPeriodWeeks: Flow<Int> =
+        context.dataStore.data.map { it[KEY_EMERGENCY_RESET_WEEKS] ?: DEFAULT_EMERGENCY_RESET_WEEKS }
+
+    /** Epoch millis when the next emergency-unblock refill is due. */
+    val emergencyNextResetEpochMs: Flow<Long> =
+        context.dataStore.data.map { prefs -> computeNextEmergencyResetEpochMs(prefs) }
+
     suspend fun setThemeColorName(name: String) {
         context.dataStore.edit { it[KEY_THEME] = name }
     }
@@ -103,6 +110,13 @@ class AppPreferences @Inject constructor(
         context.dataStore.edit { applyEmergencyUnblockResetIfNeeded(it) }
     }
 
+    suspend fun setEmergencyResetPeriodWeeks(weeks: Int) {
+        require(weeks in EMERGENCY_RESET_PERIOD_WEEKS_OPTIONS) {
+            "Invalid emergency reset period: $weeks"
+        }
+        context.dataStore.edit { it[KEY_EMERGENCY_RESET_WEEKS] = weeks }
+    }
+
     /**
      * Consumes one emergency unblock if any remain. Returns false when exhausted.
      *
@@ -126,6 +140,12 @@ class AppPreferences @Inject constructor(
      * Period refill for emergency unblocks — must run inside a DataStore [edit] block
      * so it composes atomically with [tryConsumeEmergencyUnblock].
      */
+    private fun computeNextEmergencyResetEpochMs(prefs: Preferences): Long {
+        val last = prefs[KEY_LAST_EMERGENCY_RESET_MS] ?: System.currentTimeMillis()
+        val weeks = prefs[KEY_EMERGENCY_RESET_WEEKS] ?: DEFAULT_EMERGENCY_RESET_WEEKS
+        return last + weeks * 7L * 24 * 60 * 60 * 1000
+    }
+
     private fun applyEmergencyUnblockResetIfNeeded(prefs: MutablePreferences) {
         val last = prefs[KEY_LAST_EMERGENCY_RESET_MS] ?: 0L
         if (last == 0L) {
@@ -230,7 +250,8 @@ class AppPreferences @Inject constructor(
             longPreferencesKey("last_emergency_unblocks_reset_date")
 
         const val DEFAULT_EMERGENCY_UNBLOCKS = 3
-        private const val DEFAULT_EMERGENCY_RESET_WEEKS = 4
+        const val DEFAULT_EMERGENCY_RESET_WEEKS = 4
+        val EMERGENCY_RESET_PERIOD_WEEKS_OPTIONS = listOf(2, 4, 6, 8)
 
         /**
          * Salt for the NFC cache hash. Not security-critical (lookup-only);

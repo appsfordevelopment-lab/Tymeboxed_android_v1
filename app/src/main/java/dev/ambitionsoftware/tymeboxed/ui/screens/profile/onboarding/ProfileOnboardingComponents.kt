@@ -56,6 +56,7 @@ fun ProfileOnboardingScaffold(
     onClose: () -> Unit,
     nextLabel: String = "Next",
     nextEnabled: Boolean = true,
+    allowNextWhenDisabled: Boolean = false,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
@@ -158,6 +159,7 @@ fun ProfileOnboardingScaffold(
                         title = nextLabel,
                         onClick = onNext,
                         enabled = nextEnabled,
+                        allowClickWhenDisabled = allowNextWhenDisabled,
                         backgroundColor = if (nextEnabled) {
                             cs.primary
                         } else {

@@ -47,16 +47,16 @@ import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Nfc
-import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Stop
@@ -110,8 +110,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -223,6 +228,18 @@ class HomeViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AppPreferences.DEFAULT_EMERGENCY_UNBLOCKS,
+    )
+
+    val emergencyResetPeriodWeeks: StateFlow<Int> = appPreferences.emergencyResetPeriodWeeks.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = AppPreferences.DEFAULT_EMERGENCY_RESET_WEEKS,
+    )
+
+    val emergencyNextResetEpochMs: StateFlow<Long> = appPreferences.emergencyNextResetEpochMs.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = System.currentTimeMillis(),
     )
 
     /** Start of local day 120 days ago — enough for monthly + 4-week charts. */
@@ -366,6 +383,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { appPreferences.checkAndResetEmergencyUnblocks() }
     }
 
+    fun setEmergencyResetPeriodWeeks(weeks: Int) {
+        viewModelScope.launch { appPreferences.setEmergencyResetPeriodWeeks(weeks) }
+    }
+
     /**
      * Foqos-style emergency stop: ends the session without NFC and consumes one
      * of the limited emergency unblocks.
@@ -481,6 +502,8 @@ fun HomeScreen(
     val activityMinutesByProfileByLocalDay by vm.activityMinutesByProfileByLocalDay.collectAsState()
     val allGranted by permissionsVm.allRequiredGranted.collectAsState()
     val emergencyRemaining by vm.emergencyUnblocksRemaining.collectAsState()
+    val emergencyResetWeeks by vm.emergencyResetPeriodWeeks.collectAsState()
+    val emergencyNextResetMs by vm.emergencyNextResetEpochMs.collectAsState()
 
     var showManageChartSheet by remember { mutableStateOf(false) }
     var showProfilesSheet by remember { mutableStateOf(false) }
@@ -790,8 +813,11 @@ fun HomeScreen(
             LaunchedEffect(Unit) { vm.checkAndResetEmergencyUnblocks() }
             EmergencyBottomSheet(
                 remaining = emergencyRemaining,
+                resetPeriodWeeks = emergencyResetWeeks,
+                nextResetEpochMs = emergencyNextResetMs,
                 isLoading = emergencyUnblockLoading,
                 onDismiss = { showEmergencySheet = false },
+                onResetPeriodWeeksChange = vm::setEmergencyResetPeriodWeeks,
                 onEmergencyUnblock = {
                     emergencyUnblockLoading = true
                     vm.performEmergencyUnblock {
@@ -829,7 +855,7 @@ private fun ProfileListLoadingPlaceholder() {
 }
 
 /**
- * Foqos-style empty home — decorative icons, “Getting Started”, and accent CTA.
+ * Empty home — focus messaging, benefit list, “Getting Started”, and accent CTA.
  * Accent color follows Settings → Appearance (Material [colorScheme.primary]).
  */
 @Composable
@@ -844,12 +870,38 @@ private fun GettingStartedEmptyState(
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        GettingStartedIconCluster(modifier = Modifier.padding(vertical = 24.dp))
+        FocusDropHeroText()
+        Spacer(modifier = Modifier.height(28.dp))
+        FocusBenefitRow(
+            icon = Icons.Outlined.Smartphone,
+            title = "Focus becomes the default",
+            description = "Distraction turns into the effortful choice.",
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 16.dp),
+            color = cs.outline.copy(alpha = 0.25f),
+        )
+        FocusBenefitRow(
+            icon = Icons.Outlined.Schedule,
+            title = "A real step before the scroll",
+            description = "Your brain re-engages before the habit fires.",
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 16.dp),
+            color = cs.outline.copy(alpha = 0.25f),
+        )
+        FocusBenefitRow(
+            icon = Icons.Outlined.Check,
+            title = "Follow-through, automated",
+            description = "2–3x more likely to stick than willpower.",
+        )
+        Spacer(modifier = Modifier.height(32.dp))
         Text(
             text = "Getting Started",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = cs.onBackground,
+            textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
@@ -895,79 +947,101 @@ private fun GettingStartedEmptyState(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = cs.primary,
-            modifier = Modifier.clickable(onClick = onOpenFullEditor),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenFullEditor),
         )
     }
 }
 
 @Composable
-private fun GettingStartedIconCluster(modifier: Modifier = Modifier) {
+private fun FocusDropHeroText(modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
-    val bubbleBg = cs.surface
-    val iconTint = cs.onSurface
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(160.dp),
-        contentAlignment = Alignment.Center,
+    val serifStyle = MaterialTheme.typography.titleLarge.copy(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Normal,
+        color = cs.onBackground,
+        lineHeight = 30.sp,
+    )
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        GettingStartedIconBubble(
-            icon = Icons.Default.QrCode2,
-            tint = iconTint,
-            background = bubbleBg,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 24.dp, top = 8.dp),
+        Text(
+            text = buildAnnotatedString {
+                append("Your focus dropped from ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("2.5 min")
+                }
+                append(" to ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("47 sec.")
+                }
+            },
+            style = serifStyle,
+            textAlign = TextAlign.Center,
         )
-        GettingStartedIconBubble(
-            icon = Icons.Default.Nfc,
-            tint = cs.primary,
-            background = bubbleBg,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 20.dp, top = 0.dp),
-        )
-        GettingStartedIconBubble(
-            icon = Icons.Default.Nfc,
-            tint = Color(0xFF007AFF),
-            background = bubbleBg,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 32.dp, bottom = 4.dp),
-        )
-        GettingStartedIconBubble(
-            icon = Icons.Default.Schedule,
-            tint = Color(0xFFC4A77D),
-            background = bubbleBg,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 28.dp, bottom = 8.dp),
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = buildAnnotatedString {
+                append("One physical tap brings it ")
+                withStyle(
+                    SpanStyle(
+                        fontStyle = FontStyle.Italic,
+                        color = cs.primary,
+                    ),
+                ) {
+                    append("back.")
+                }
+            },
+            style = serifStyle,
+            textAlign = TextAlign.Center,
         )
     }
 }
 
 @Composable
-private fun GettingStartedIconBubble(
+private fun FocusBenefitRow(
     icon: ImageVector,
-    tint: Color,
-    background: Color,
-    modifier: Modifier = Modifier,
+    title: String,
+    description: String,
 ) {
-    Box(
-        modifier = modifier
-            .size(64.dp)
-            .shadow(6.dp, CircleShape, clip = false)
-            .clip(CircleShape)
-            .background(background)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), CircleShape),
-        contentAlignment = Alignment.Center,
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(30.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(cs.surface)
+                .border(1.dp, cs.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = cs.onSurface,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = cs.onBackground,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
+            )
+        }
     }
 }
 

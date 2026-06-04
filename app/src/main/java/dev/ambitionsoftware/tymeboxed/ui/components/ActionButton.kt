@@ -38,14 +38,17 @@ fun ActionButton(
     contentColor: Color = MaterialTheme.colorScheme.onPrimary,
     isLoading: Boolean = false,
     enabled: Boolean = true,
+    /** When true, taps still invoke [onClick] while the button looks disabled. */
+    allowClickWhenDisabled: Boolean = false,
 ) {
     val interactive = enabled && !isLoading
+    val acceptsClicks = (!isLoading) && (interactive || allowClickWhenDisabled)
     Button(
-        onClick = { if (interactive) onClick() },
+        onClick = { if (acceptsClicks) onClick() },
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp),
-        enabled = interactive,
+        enabled = acceptsClicks,
         shape = RoundedCornerShape(25.dp), // capsule — matches iOS Capsule clipShape
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
