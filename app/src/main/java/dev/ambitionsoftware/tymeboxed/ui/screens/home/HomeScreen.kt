@@ -895,7 +895,7 @@ private fun GettingStartedEmptyState(
             title = "Follow-through, automated",
             description = "2–3x more likely to stick than willpower.",
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(56.dp))
         Text(
             text = "Getting Started",
             style = MaterialTheme.typography.headlineSmall,
@@ -969,8 +969,12 @@ private fun FocusDropHeroText(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
+            text = "Your focus dropped from",
+            style = serifStyle,
+            textAlign = TextAlign.Center,
+        )
+        Text(
             text = buildAnnotatedString {
-                append("Your focus dropped from ")
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                     append("2.5 min")
                 }
