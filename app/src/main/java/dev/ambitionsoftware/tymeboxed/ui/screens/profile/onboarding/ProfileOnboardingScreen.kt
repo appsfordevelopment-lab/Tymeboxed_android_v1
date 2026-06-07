@@ -401,16 +401,22 @@ private fun OnboardingStrategyRow(
                 color = cs.onSurfaceVariant,
             )
             if (strategy.tags.isNotEmpty()) {
-                Text(
-                    text = strategy.tags.joinToString(" · ") { it.label },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = cs.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(pillBg)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                )
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    strategy.tags.forEach { tag ->
+                        Text(
+                            text = tag.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = cs.onSurfaceVariant,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(pillBg)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.size(8.dp))

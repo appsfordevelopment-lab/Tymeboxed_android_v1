@@ -34,6 +34,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -57,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import dev.ambitionsoftware.tymeboxed.domain.model.ProfileSchedule
 import dev.ambitionsoftware.tymeboxed.ui.theme.LocalAccentColor
 import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
@@ -97,6 +100,9 @@ private fun fallbackWeekdayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
 
 private val minuteSteps = (0..55 step 5).toList()
 private val hours12 = (1..12).toList()
+private const val MIN_SCHEDULE_DURATION_MINUTES = 60
+private const val MAX_SCHEDULE_DURATION_MINUTES = 24 * 60
+private const val SCHEDULE_DURATION_STEP_MINUTES = 30
 
 /**
  * Full-screen schedule editor — mirrors iOS [SchedulePicker].
@@ -127,7 +133,18 @@ fun SchedulePickerScreen(
     var endMinute by remember { mutableIntStateOf(0) }
 
     var showStartPickers by remember { mutableStateOf(false) }
-    var showEndPickers by remember { mutableStateOf(false) }
+    var scheduleDurationMinutes by remember { mutableIntStateOf(8 * 60) }
+
+    fun applyDurationToEnd(durationMin: Int) {
+        val start24 = hour12To24(startHour12, startPm)
+        val startTotal = start24 * 60 + startMinute
+        val endTotal = (startTotal + durationMin) % (24 * 60)
+        val end24 = endTotal / 60
+        val endMin = roundToFive(endTotal % 60)
+        endHour12 = from24To12(end24).first
+        endPm = from24To12(end24).second
+        endMinute = endMin
+    }
 
     // Profile data loads asynchronously; seeding only from the first frame leaves [selectedDays]
     // empty forever so Save stays disabled. Sync once the editor state is ready.
@@ -141,19 +158,26 @@ fun SchedulePickerScreen(
         endHour12 = from24To12(s.endHour).first
         endPm = from24To12(s.endHour).second
         endMinute = roundToFive(s.endMinute)
+        scheduleDurationMinutes = snapScheduleDuration(
+            durationMinutesBetween(
+                startHour = s.startHour,
+                startMinute = s.startMinute,
+                endHour = s.endHour,
+                endMinute = s.endMinute,
+            ),
+        )
         showStartPickers = false
-        showEndPickers = false
+    }
+
+    LaunchedEffect(startHour12, startPm, startMinute) {
+        applyDurationToEnd(scheduleDurationMinutes)
     }
 
     val start24 = hour12To24(startHour12, startPm)
     val end24 = hour12To24(endHour12, endPm)
     val startTotal = start24 * 60 + startMinute
     val endTotal = end24 * 60 + endMinute
-    val durationMinutes = if (endTotal <= startTotal) {
-        (24 * 60 - startTotal) + endTotal
-    } else {
-        endTotal - startTotal
-    }
+    val durationMinutes = durationMinutesBetween(start24, startMinute, end24, endMinute)
     val hasDays = selectedDays.isNotEmpty()
     val isValid = hasDays && durationMinutes >= 60
     val validationText = when {
@@ -314,7 +338,6 @@ fun SchedulePickerScreen(
                                 selectedDays = if (sel) selectedDays - dow else selectedDays + dow
                                 if (selectedDays.isEmpty()) {
                                     showStartPickers = false
-                                    showEndPickers = false
                                 }
                             },
                         contentAlignment = Alignment.Center,
@@ -345,7 +368,6 @@ fun SchedulePickerScreen(
                     .background(cs.surface)
                     .clickable(enabled = hasDays) {
                         showStartPickers = !showStartPickers
-                        if (showStartPickers) showEndPickers = false
                     }
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -396,10 +418,6 @@ fun SchedulePickerScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(cs.surface)
-                    .clickable(enabled = hasDays) {
-                        showEndPickers = !showEndPickers
-                        if (showEndPickers) showStartPickers = false
-                    }
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -416,25 +434,14 @@ fun SchedulePickerScreen(
                     color = cs.onSurface.copy(alpha = if (isDark) 0.55f else 0.45f),
                 )
             }
-            if (showEndPickers && hasDays) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(cs.surface)
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                ) {
-                    DropdownTimeSelectors(
-                        hour12 = endHour12,
-                        onHour = { endHour12 = it },
-                        minute = endMinute,
-                        onMinute = { endMinute = it },
-                        isPm = endPm,
-                        onPm = { endPm = it },
-                    )
-                }
-            }
+            ScheduleDurationSliderBox(
+                durationMinutes = scheduleDurationMinutes,
+                accent = accent,
+                onDurationChange = { newDuration ->
+                    scheduleDurationMinutes = newDuration
+                    applyDurationToEnd(newDuration)
+                },
+            )
             validationText?.let {
                 Text(
                     text = it,
@@ -455,11 +462,8 @@ fun SchedulePickerScreen(
                         startHour12 = 9
                         startPm = false
                         startMinute = 0
-                        endHour12 = 5
-                        endPm = true
-                        endMinute = 0
+                        scheduleDurationMinutes = 8 * 60
                         showStartPickers = false
-                        showEndPickers = false
                         viewModel.updateSchedule(ProfileSchedule.inactive())
                         onBack()
                     }
@@ -485,6 +489,73 @@ fun SchedulePickerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 28.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScheduleDurationSliderBox(
+    durationMinutes: Int,
+    accent: Color,
+    onDurationChange: (Int) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val durationSteps =
+        (MAX_SCHEDULE_DURATION_MINUTES - MIN_SCHEDULE_DURATION_MINUTES) / SCHEDULE_DURATION_STEP_MINUTES
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(cs.surface)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = formatScheduleDurationLabel(durationMinutes),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = cs.onSurface,
+        )
+        Text(
+            text = "Schedule duration",
+            style = MaterialTheme.typography.bodyMedium,
+            color = cs.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Slider(
+            value = durationMinutes.toFloat(),
+            onValueChange = { raw ->
+                val stepIndex = ((raw - MIN_SCHEDULE_DURATION_MINUTES) / SCHEDULE_DURATION_STEP_MINUTES)
+                    .roundToInt()
+                    .coerceIn(0, durationSteps)
+                onDurationChange(MIN_SCHEDULE_DURATION_MINUTES + stepIndex * SCHEDULE_DURATION_STEP_MINUTES)
+            },
+            valueRange = MIN_SCHEDULE_DURATION_MINUTES.toFloat()..MAX_SCHEDULE_DURATION_MINUTES.toFloat(),
+            steps = durationSteps - 1,
+            colors = SliderDefaults.colors(
+                thumbColor = accent,
+                activeTrackColor = accent,
+                inactiveTrackColor = cs.onSurface.copy(alpha = 0.12f),
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = formatScheduleDurationLabel(MIN_SCHEDULE_DURATION_MINUTES),
+                style = MaterialTheme.typography.labelMedium,
+                color = cs.onSurfaceVariant,
+            )
+            Text(
+                text = formatScheduleDurationLabel(MAX_SCHEDULE_DURATION_MINUTES),
+                style = MaterialTheme.typography.labelMedium,
+                color = cs.onSurfaceVariant,
             )
         }
     }
@@ -634,3 +705,36 @@ private fun roundToFive(value: Int): Int {
 
 private fun format12hLabel(h12: Int, minute: Int, pm: Boolean): String =
     "$h12:${"%02d".format(minute)} ${if (pm) "PM" else "AM"}"
+
+private fun durationMinutesBetween(
+    startHour: Int,
+    startMinute: Int,
+    endHour: Int,
+    endMinute: Int,
+): Int {
+    val startTotal = startHour * 60 + startMinute
+    val endTotal = endHour * 60 + endMinute
+    return if (endTotal <= startTotal) {
+        (24 * 60 - startTotal) + endTotal
+    } else {
+        endTotal - startTotal
+    }
+}
+
+private fun snapScheduleDuration(minutes: Int): Int {
+    val clamped = minutes.coerceIn(MIN_SCHEDULE_DURATION_MINUTES, MAX_SCHEDULE_DURATION_MINUTES)
+    val offset = clamped - MIN_SCHEDULE_DURATION_MINUTES
+    val steps = (offset.toFloat() / SCHEDULE_DURATION_STEP_MINUTES).roundToInt()
+    return (MIN_SCHEDULE_DURATION_MINUTES + steps * SCHEDULE_DURATION_STEP_MINUTES)
+        .coerceIn(MIN_SCHEDULE_DURATION_MINUTES, MAX_SCHEDULE_DURATION_MINUTES)
+}
+
+private fun formatScheduleDurationLabel(minutes: Int): String {
+    val hours = minutes / 60
+    val mins = minutes % 60
+    return when {
+        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
+        hours > 0 -> "${hours}h"
+        else -> "${mins}m"
+    }
+}
