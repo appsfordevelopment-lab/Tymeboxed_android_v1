@@ -667,13 +667,14 @@ fun HomeScreen(
         Scaffold(
             containerColor = homeBg,
         ) { padding ->
+            val emptyHome = profiles.isEmpty() && !profilesInitialLoading
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(homeBg)
                     .padding(padding)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(if (emptyHome) 12.dp else 24.dp),
             ) {
                 Row(
                     modifier = Modifier
@@ -867,18 +868,18 @@ private fun GettingStartedEmptyState(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FocusDropHeroText()
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         FocusBenefitRow(
             icon = Icons.Outlined.Smartphone,
             title = "Focus becomes the default",
             description = "Distraction turns into the effortful choice.",
         )
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 10.dp),
             color = cs.outline.copy(alpha = 0.25f),
         )
         FocusBenefitRow(
@@ -887,7 +888,7 @@ private fun GettingStartedEmptyState(
             description = "Your brain re-engages before the habit fires.",
         )
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 10.dp),
             color = cs.outline.copy(alpha = 0.25f),
         )
         FocusBenefitRow(
@@ -895,30 +896,30 @@ private fun GettingStartedEmptyState(
             title = "Follow-through, automated",
             description = "2–3x more likely to stick than willpower.",
         )
-        Spacer(modifier = Modifier.height(56.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = "Getting Started",
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = cs.onBackground,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Let's get you started by creating your first profile. " +
                 "You can customize it as much or as little as you'd like.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = cs.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            lineHeight = 24.sp,
+            lineHeight = 20.sp,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onCreateProfile,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .height(48.dp),
             shape = RoundedCornerShape(26.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = cs.primary,
@@ -941,7 +942,7 @@ private fun GettingStartedEmptyState(
                 fontSize = 17.sp,
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "Use the full profile editor",
             style = MaterialTheme.typography.bodyMedium,
@@ -958,11 +959,11 @@ private fun GettingStartedEmptyState(
 @Composable
 private fun FocusDropHeroText(modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
-    val serifStyle = MaterialTheme.typography.titleLarge.copy(
+    val serifStyle = MaterialTheme.typography.titleMedium.copy(
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
         color = cs.onBackground,
-        lineHeight = 30.sp,
+        lineHeight = 26.sp,
     )
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -986,7 +987,7 @@ private fun FocusDropHeroText(modifier: Modifier = Modifier) {
             style = serifStyle,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = buildAnnotatedString {
                 append("One physical tap brings it ")
@@ -1014,12 +1015,12 @@ private fun FocusBenefitRow(
     val cs = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(cs.surface)
                 .border(1.dp, cs.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
@@ -1029,17 +1030,17 @@ private fun FocusBenefitRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = cs.onSurface,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = cs.onBackground,
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
