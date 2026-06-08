@@ -1,5 +1,6 @@
 package dev.ambitionsoftware.tymeboxed.ui.screens.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,8 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,21 +19,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -53,18 +54,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import dev.ambitionsoftware.tymeboxed.domain.model.ProfileSchedule
+import dev.ambitionsoftware.tymeboxed.ui.screens.home.BREAK_TIMER_SETTINGS_RANGE
+import dev.ambitionsoftware.tymeboxed.ui.screens.home.FOCUS_TIMER_SETTINGS_RANGE
+import dev.ambitionsoftware.tymeboxed.ui.screens.home.TimerSettingsBottomSheet
+import dev.ambitionsoftware.tymeboxed.ui.screens.home.formatTimerDurationLabel
 import dev.ambitionsoftware.tymeboxed.ui.theme.LocalAccentColor
 import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import java.text.DateFormatSymbols
 import java.util.Calendar
+import kotlin.math.roundToInt
+
 private val calendarWeekdays = listOf(
     Calendar.SUNDAY,
     Calendar.MONDAY,
@@ -100,9 +108,6 @@ private fun fallbackWeekdayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
 
 private val minuteSteps = (0..55 step 5).toList()
 private val hours12 = (1..12).toList()
-private const val MIN_SCHEDULE_DURATION_MINUTES = 60
-private const val MAX_SCHEDULE_DURATION_MINUTES = 24 * 60
-private const val SCHEDULE_DURATION_STEP_MINUTES = 30
 
 /**
  * Full-screen schedule editor — mirrors iOS [SchedulePicker].
@@ -117,9 +122,11 @@ fun SchedulePickerScreen(
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
     val pageBg = if (isDark) Color(0xFF121212) else cs.background
+    val cardBg = if (isDark) Color(0xFF2C2C2E) else cs.surface
     val neutralCircle = if (isDark) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
     val destructive = if (isDark) Color(0xFFFF453A) else Color(0xFFFF3B30)
     val linkBlue = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF)
+    val selectedDayText = if (isDark) Color(0xFF1C1C1E) else Color(0xFF2C2C2E)
     val weekdayDefs = rememberWeekdayLabels()
 
     val uiState by viewModel.state.collectAsState()
@@ -133,21 +140,9 @@ fun SchedulePickerScreen(
     var endMinute by remember { mutableIntStateOf(0) }
 
     var showStartPickers by remember { mutableStateOf(false) }
-    var scheduleDurationMinutes by remember { mutableIntStateOf(8 * 60) }
+    var showEndPickers by remember { mutableStateOf(false) }
+    var showFocusLengthPicker by remember { mutableStateOf(false) }
 
-    fun applyDurationToEnd(durationMin: Int) {
-        val start24 = hour12To24(startHour12, startPm)
-        val startTotal = start24 * 60 + startMinute
-        val endTotal = (startTotal + durationMin) % (24 * 60)
-        val end24 = endTotal / 60
-        val endMin = roundToFive(endTotal % 60)
-        endHour12 = from24To12(end24).first
-        endPm = from24To12(end24).second
-        endMinute = endMin
-    }
-
-    // Profile data loads asynchronously; seeding only from the first frame leaves [selectedDays]
-    // empty forever so Save stays disabled. Sync once the editor state is ready.
     LaunchedEffect(uiState.profileReady) {
         if (!uiState.profileReady) return@LaunchedEffect
         val s = uiState.schedule
@@ -158,25 +153,12 @@ fun SchedulePickerScreen(
         endHour12 = from24To12(s.endHour).first
         endPm = from24To12(s.endHour).second
         endMinute = roundToFive(s.endMinute)
-        scheduleDurationMinutes = snapScheduleDuration(
-            durationMinutesBetween(
-                startHour = s.startHour,
-                startMinute = s.startMinute,
-                endHour = s.endHour,
-                endMinute = s.endMinute,
-            ),
-        )
         showStartPickers = false
-    }
-
-    LaunchedEffect(startHour12, startPm, startMinute) {
-        applyDurationToEnd(scheduleDurationMinutes)
+        showEndPickers = false
     }
 
     val start24 = hour12To24(startHour12, startPm)
     val end24 = hour12To24(endHour12, endPm)
-    val startTotal = start24 * 60 + startMinute
-    val endTotal = end24 * 60 + endMinute
     val durationMinutes = durationMinutesBetween(start24, startMinute, end24, endMinute)
     val hasDays = selectedDays.isNotEmpty()
     val isValid = hasDays && durationMinutes >= 60
@@ -200,16 +182,14 @@ fun SchedulePickerScreen(
         onBack()
     }
 
-    val helpAnnotated = remember(linkBlue, cs.onSurfaceVariant) {
+    val footerAnnotated = remember(linkBlue, cs.onSurfaceVariant) {
         buildAnnotatedString {
-            withStyle(
-                SpanStyle(color = cs.onSurfaceVariant),
-            ) {
-                append("If you're looking for more granularity, you can use Shortcuts. ")
+            withStyle(SpanStyle(color = cs.onSurfaceVariant)) {
+                append("If you're looking for more granularity, you can use Shortcuts.\n")
             }
             pushLink(
                 LinkAnnotation.Url(
-                    WebsiteUrls.shortcutsHelp,
+                    WebsiteUrls.home,
                     styles = TextLinkStyles(
                         style = SpanStyle(
                             color = linkBlue,
@@ -218,12 +198,22 @@ fun SchedulePickerScreen(
                     ),
                 ),
             )
-            append("Here is a quick video")
+            append("Tymeboxed.app")
             pop()
-            withStyle(SpanStyle(color = cs.onSurfaceVariant)) {
-                append(".")
-            }
         }
+    }
+
+    if (showFocusLengthPicker) {
+        TimerSettingsBottomSheet(
+            profileName = uiState.name.ifBlank { "Profile" },
+            range = FOCUS_TIMER_SETTINGS_RANGE,
+            initialMinutes = uiState.timerMinutes,
+            onConfirm = { minutes ->
+                viewModel.onTimerMinutesChange(minutes)
+                showFocusLengthPicker = false
+            },
+            onDismiss = { showFocusLengthPicker = false },
+        )
     }
 
     Scaffold(
@@ -270,63 +260,17 @@ fun SchedulePickerScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(cs.surface)
-                    .padding(horizontal = 20.dp, vertical = 22.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
-                    modifier = Modifier.size(52.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.CalendarMonth,
-                        contentDescription = null,
-                        modifier = Modifier.size(44.dp),
-                        tint = cs.onSurfaceVariant,
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 2.dp, bottom = 2.dp),
-                        tint = cs.onSurfaceVariant,
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Choose when this profile starts and ends. To end early, use the strategy you set up earlier. The schedule must be at least 1 hour long.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(22.dp))
-
-            Text(
-                text = "Days",
-                style = MaterialTheme.typography.labelLarge,
-                color = cs.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 weekdayDefs.forEach { (dow, label) ->
                     val sel = dow in selectedDays
-                    val fg = if (sel) Color.White else cs.onSurface
-                    val borderC = if (sel) accent else cs.outlineVariant
+                    val fg = if (sel) selectedDayText else cs.onSurface
+                    val borderC = if (sel) accent else cs.onSurface.copy(alpha = 0.35f)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -338,6 +282,7 @@ fun SchedulePickerScreen(
                                 selectedDays = if (sel) selectedDays - dow else selectedDays + dow
                                 if (selectedDays.isEmpty()) {
                                     showStartPickers = false
+                                    showEndPickers = false
                                 }
                             },
                         contentAlignment = Alignment.Center,
@@ -352,48 +297,27 @@ fun SchedulePickerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
-
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Start Time",
-                style = MaterialTheme.typography.labelLarge,
+                text = "Schedules take 15 minutes to update",
+                style = MaterialTheme.typography.bodySmall,
                 color = cs.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(cs.surface)
-                    .clickable(enabled = hasDays) {
-                        showStartPickers = !showStartPickers
-                    }
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "When to start",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = cs.onSurfaceVariant,
-                )
-                Text(
-                    format12hLabel(startHour12, startMinute, startPm),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = cs.onSurface.copy(alpha = if (isDark) 0.55f else 0.45f),
-                )
-            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ScheduleSectionLabel("Start Time")
+            ScheduleValueRow(
+                cardBg = cardBg,
+                leftLabel = "When to start",
+                rightValue = format12hLabel(startHour12, startMinute, startPm),
+                enabled = hasDays,
+                onClick = { showStartPickers = !showStartPickers },
+            )
             if (showStartPickers && hasDays) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(cs.surface)
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                ) {
+                ScheduleTimePickerCard(cardBg = cardBg) {
                     DropdownTimeSelectors(
                         hour12 = startHour12,
                         onHour = { startHour12 = it },
@@ -406,42 +330,26 @@ fun SchedulePickerScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "End Time",
-                style = MaterialTheme.typography.labelLarge,
-                color = cs.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
+            ScheduleSectionLabel("End Time")
+            ScheduleValueRow(
+                cardBg = cardBg,
+                leftLabel = "When to end",
+                rightValue = format12hLabel(endHour12, endMinute, endPm),
+                enabled = hasDays,
+                onClick = { showEndPickers = !showEndPickers },
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(cs.surface)
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "When to end",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = cs.onSurfaceVariant,
-                )
-                Text(
-                    format12hLabel(endHour12, endMinute, endPm),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = cs.onSurface.copy(alpha = if (isDark) 0.55f else 0.45f),
-                )
+            if (showEndPickers && hasDays) {
+                ScheduleTimePickerCard(cardBg = cardBg) {
+                    DropdownTimeSelectors(
+                        hour12 = endHour12,
+                        onHour = { endHour12 = it },
+                        minute = endMinute,
+                        onMinute = { endMinute = it },
+                        isPm = endPm,
+                        onPm = { endPm = it },
+                    )
+                }
             }
-            ScheduleDurationSliderBox(
-                durationMinutes = scheduleDurationMinutes,
-                accent = accent,
-                onDurationChange = { newDuration ->
-                    scheduleDurationMinutes = newDuration
-                    applyDurationToEnd(newDuration)
-                },
-            )
             validationText?.let {
                 Text(
                     text = it,
@@ -451,19 +359,41 @@ fun SchedulePickerScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+            ScheduleSectionLabel("Default Focus session length")
+            ScheduleValueRow(
+                cardBg = cardBg,
+                leftLabel = "Time selector",
+                rightValue = formatMinutesLabel(uiState.timerMinutes),
+                enabled = true,
+                onClick = { showFocusLengthPicker = true },
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            ScheduleSectionLabel("Default Break duration")
+            BreakDurationSliderBox(
+                cardBg = cardBg,
+                minutes = uiState.breakTimeInMinutes,
+                accent = accent,
+                onMinutesChange = viewModel::onBreakTimeChange,
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(cs.surface)
+                    .background(cardBg)
                     .clickable {
                         selectedDays = emptySet()
                         startHour12 = 9
                         startPm = false
                         startMinute = 0
-                        scheduleDurationMinutes = 8 * 60
+                        endHour12 = 5
+                        endPm = true
+                        endMinute = 0
                         showStartPickers = false
+                        showEndPickers = false
                         viewModel.updateSchedule(ProfileSchedule.inactive())
                         onBack()
                     }
@@ -479,12 +409,11 @@ fun SchedulePickerScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = helpAnnotated,
+                text = footerAnnotated,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = cs.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
+                    textAlign = TextAlign.Center,
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -495,65 +424,167 @@ fun SchedulePickerScreen(
 }
 
 @Composable
-private fun ScheduleDurationSliderBox(
-    durationMinutes: Int,
-    accent: Color,
-    onDurationChange: (Int) -> Unit,
+private fun ScheduleSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+}
+
+@Composable
+private fun ScheduleValueRow(
+    cardBg: Color,
+    leftLabel: String,
+    rightValue: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val durationSteps =
-        (MAX_SCHEDULE_DURATION_MINUTES - MIN_SCHEDULE_DURATION_MINUTES) / SCHEDULE_DURATION_STEP_MINUTES
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = leftLabel,
+            style = MaterialTheme.typography.bodyLarge,
+            color = cs.onSurfaceVariant,
+        )
+        Text(
+            text = rightValue,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = cs.onSurface,
+        )
+    }
+}
+
+@Composable
+private fun ScheduleTimePickerCard(
+    cardBg: Color,
+    content: @Composable () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(cs.surface)
-            .padding(horizontal = 16.dp, vertical = 18.dp),
+            .background(cardBg)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun BreakDurationSliderBox(
+    cardBg: Color,
+    minutes: Int,
+    accent: Color,
+    onMinutesChange: (Int) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val range = BREAK_TIMER_SETTINGS_RANGE
+    val snapped = range.snap(minutes.toFloat())
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = formatScheduleDurationLabel(durationMinutes),
+            text = formatMinutesLabel(snapped),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = cs.onSurface,
         )
         Text(
-            text = "Schedule duration",
+            text = "Break length",
             style = MaterialTheme.typography.bodyMedium,
             color = cs.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        Slider(
-            value = durationMinutes.toFloat(),
-            onValueChange = { raw ->
-                val stepIndex = ((raw - MIN_SCHEDULE_DURATION_MINUTES) / SCHEDULE_DURATION_STEP_MINUTES)
-                    .roundToInt()
-                    .coerceIn(0, durationSteps)
-                onDurationChange(MIN_SCHEDULE_DURATION_MINUTES + stepIndex * SCHEDULE_DURATION_STEP_MINUTES)
-            },
-            valueRange = MIN_SCHEDULE_DURATION_MINUTES.toFloat()..MAX_SCHEDULE_DURATION_MINUTES.toFloat(),
-            steps = durationSteps - 1,
-            colors = SliderDefaults.colors(
-                thumbColor = accent,
-                activeTrackColor = accent,
-                inactiveTrackColor = cs.onSurface.copy(alpha = 0.12f),
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            OutlinedIconButton(
+                onClick = {
+                    onMinutesChange((snapped - range.stepMinutes).coerceAtLeast(range.minMinutes))
+                },
+                enabled = snapped > range.minMinutes,
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.6f)),
+                colors = IconButtonDefaults.outlinedIconButtonColors(
+                    contentColor = accent,
+                    disabledContentColor = accent.copy(alpha = 0.35f),
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Decrease break duration",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            Slider(
+                value = snapped.toFloat(),
+                onValueChange = { onMinutesChange(range.snap(it)) },
+                valueRange = range.minMinutes.toFloat()..range.maxMinutes.toFloat(),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = accent,
+                    inactiveTrackColor = cs.onSurface.copy(alpha = 0.15f),
+                ),
+            )
+
+            IconButton(
+                onClick = {
+                    onMinutesChange((snapped + range.stepMinutes).coerceAtMost(range.maxMinutes))
+                },
+                enabled = snapped < range.maxMinutes,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = Color(0xFF1C1C1E),
+                    disabledContentColor = Color(0xFF1C1C1E).copy(alpha = 0.4f),
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Increase break duration",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = formatScheduleDurationLabel(MIN_SCHEDULE_DURATION_MINUTES),
+                text = formatTimerDurationLabel(range.minMinutes),
                 style = MaterialTheme.typography.labelMedium,
                 color = cs.onSurfaceVariant,
             )
             Text(
-                text = formatScheduleDurationLabel(MAX_SCHEDULE_DURATION_MINUTES),
+                text = formatTimerDurationLabel(range.maxMinutes),
                 style = MaterialTheme.typography.labelMedium,
                 color = cs.onSurfaceVariant,
             )
@@ -706,6 +737,8 @@ private fun roundToFive(value: Int): Int {
 private fun format12hLabel(h12: Int, minute: Int, pm: Boolean): String =
     "$h12:${"%02d".format(minute)} ${if (pm) "PM" else "AM"}"
 
+private fun formatMinutesLabel(minutes: Int): String = "$minutes minutes"
+
 private fun durationMinutesBetween(
     startHour: Int,
     startMinute: Int,
@@ -718,23 +751,5 @@ private fun durationMinutesBetween(
         (24 * 60 - startTotal) + endTotal
     } else {
         endTotal - startTotal
-    }
-}
-
-private fun snapScheduleDuration(minutes: Int): Int {
-    val clamped = minutes.coerceIn(MIN_SCHEDULE_DURATION_MINUTES, MAX_SCHEDULE_DURATION_MINUTES)
-    val offset = clamped - MIN_SCHEDULE_DURATION_MINUTES
-    val steps = (offset.toFloat() / SCHEDULE_DURATION_STEP_MINUTES).roundToInt()
-    return (MIN_SCHEDULE_DURATION_MINUTES + steps * SCHEDULE_DURATION_STEP_MINUTES)
-        .coerceIn(MIN_SCHEDULE_DURATION_MINUTES, MAX_SCHEDULE_DURATION_MINUTES)
-}
-
-private fun formatScheduleDurationLabel(minutes: Int): String {
-    val hours = minutes / 60
-    val mins = minutes % 60
-    return when {
-        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-        hours > 0 -> "${hours}h"
-        else -> "${mins}m"
     }
 }
