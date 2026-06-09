@@ -27,8 +27,6 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,27 +49,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.ambitionsoftware.tymeboxed.domain.model.BlockingStrategyId
 import dev.ambitionsoftware.tymeboxed.domain.model.StrategyInfo
 import dev.ambitionsoftware.tymeboxed.domain.model.availableStrategies
 import dev.ambitionsoftware.tymeboxed.domain.model.strategyInfoById
 import dev.ambitionsoftware.tymeboxed.ui.components.CustomToggle
 import dev.ambitionsoftware.tymeboxed.ui.screens.profile.ProfileEditViewModel
 import androidx.compose.material.icons.filled.Check
-import kotlin.math.roundToInt
 
-private const val TOTAL_STEPS = 9
+private const val TOTAL_STEPS = 7
 
 private enum class OnboardStep(val index: Int) {
     NAME(0),
     STRATEGY(1),
     APPS(2),
     DOMAINS(3),
-    FOCUS_DURATION(4),
-    SCHEDULE(5),
-    BREAKS(6),
-    NOTIFICATIONS(7),
-    REVIEW(8),
+    SCHEDULE(4),
+    NOTIFICATIONS(5),
+    REVIEW(6),
 }
 
 @Composable
@@ -89,9 +83,12 @@ fun ProfileOnboardingScreen(
     var appsRequiredWarning by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (stepIndex >= TOTAL_STEPS) {
-            stepIndex = OnboardStep.REVIEW.index
-        }
+        stepIndex = when {
+            stepIndex >= 8 -> OnboardStep.REVIEW.index
+            stepIndex >= 6 -> OnboardStep.NOTIFICATIONS.index
+            stepIndex >= 4 -> OnboardStep.SCHEDULE.index
+            else -> stepIndex
+        }.coerceAtMost(TOTAL_STEPS - 1)
     }
 
     LaunchedEffect(state.savedSuccessfully) {
@@ -99,40 +96,19 @@ fun ProfileOnboardingScreen(
     }
 
     val step = OnboardStep.entries.firstOrNull { it.index == stepIndex } ?: OnboardStep.NAME
-    val visibleSteps = remember(state.strategyId) { visibleOnboardSteps(state.strategyId) }
-    val displayStep = remember(stepIndex, visibleSteps) {
-        val pos = visibleSteps.indexOfFirst { it.index == stepIndex }
-        if (pos >= 0) pos + 1 else visibleSteps.size.coerceAtLeast(1)
-    }
-    val displayTotalSteps = visibleSteps.size
-
-    LaunchedEffect(state.strategyId, stepIndex) {
-        if (shouldSkipStep(stepIndex, state.strategyId)) {
-            stepIndex = visibleOnboardSteps(state.strategyId)
-                .lastOrNull { it.index < stepIndex }
-                ?.index
-                ?: visibleOnboardSteps(state.strategyId).first().index
-        }
-    }
+    val displayStep = stepIndex + 1
+    val displayTotalSteps = TOTAL_STEPS
 
     fun advance() {
-        var next = stepIndex + 1
-        while (next < TOTAL_STEPS && shouldSkipStep(next, state.strategyId)) {
-            next++
-        }
-        if (next >= TOTAL_STEPS) {
+        if (stepIndex + 1 >= TOTAL_STEPS) {
             stepIndex = OnboardStep.REVIEW.index
         } else {
-            stepIndex = next
+            stepIndex++
         }
     }
 
     fun goBack() {
-        var prev = stepIndex - 1
-        while (prev >= 0 && shouldSkipStep(prev, state.strategyId)) {
-            prev--
-        }
-        if (prev < 0) onClose() else stepIndex = prev
+        if (stepIndex <= 0) onClose() else stepIndex--
     }
 
     LaunchedEffect(state.blockedPackages.size) {
@@ -170,7 +146,7 @@ fun ProfileOnboardingScreen(
         displayTotalSteps = displayTotalSteps,
         title = stepTitle(step),
         subtitle = stepSubtitle(step),
-        onBack = if (visibleSteps.firstOrNull()?.index != stepIndex) ({ goBack() }) else null,
+        onBack = if (stepIndex > 0) ({ goBack() }) else null,
         onClose = onClose,
         nextLabel = nextLabel,
         nextEnabled = nextEnabled && !state.isSaving,
@@ -199,18 +175,9 @@ fun ProfileOnboardingScreen(
                 onBlockAdultWebsitesChange = vm::onBlockAdultWebsitesChange,
                 onOpenDomains = onOpenBlockedDomains,
             )
-            OnboardStep.FOCUS_DURATION -> FocusDurationStepContent(
-                minutes = state.timerMinutes,
-                onMinutesChange = vm::onTimerMinutesChange,
-                strategyId = state.strategyId,
-            )
             OnboardStep.SCHEDULE -> ScheduleStepContent(
                 summary = state.schedule.summaryText(),
                 onOpenSchedule = onOpenSchedule,
-            )
-            OnboardStep.BREAKS -> BreaksStepContent(
-                minutes = state.breakTimeInMinutes,
-                onMinutesChange = vm::onBreakTimeChange,
             )
             OnboardStep.NOTIFICATIONS -> NotificationsStepContent(
                 enableLiveActivity = state.enableLiveActivity,
@@ -231,28 +198,12 @@ fun ProfileOnboardingScreen(
     }
 }
 
-private fun visibleOnboardSteps(strategyId: String): List<OnboardStep> =
-    OnboardStep.entries.filter { !shouldSkipStep(it.index, strategyId) }
-
-private fun shouldSkipStep(index: Int, strategyId: String): Boolean = when (OnboardStep.entries.firstOrNull { it.index == index }) {
-    OnboardStep.FOCUS_DURATION -> strategyId !in timerStrategies
-    OnboardStep.BREAKS -> strategyId != BlockingStrategyId.FOCUS_TIMER_BREAK
-    else -> false
-}
-
-private val timerStrategies = setOf(
-    BlockingStrategyId.FOCUS_TIMER,
-    BlockingStrategyId.FOCUS_TIMER_BREAK,
-)
-
 private fun stepTitle(step: OnboardStep): String = when (step) {
     OnboardStep.NAME -> "Name this profile"
     OnboardStep.STRATEGY -> "Choose how it starts and stops"
     OnboardStep.APPS -> "Choose apps and how to block them"
     OnboardStep.DOMAINS -> "Choose domains and how to block them"
-    OnboardStep.FOCUS_DURATION -> "Set focus duration"
     OnboardStep.SCHEDULE -> "Add a schedule"
-    OnboardStep.BREAKS -> "Set break duration"
     OnboardStep.NOTIFICATIONS -> "Set notifications"
     OnboardStep.REVIEW -> "Review your profile"
 }
@@ -266,12 +217,8 @@ private fun stepSubtitle(step: OnboardStep): String = when (step) {
         "Select the apps this profile should restrict during focus sessions."
     OnboardStep.DOMAINS ->
         "Add specific domains and decide whether website blocking applies in the browser."
-    OnboardStep.FOCUS_DURATION ->
-        "Choose how long this timed focus session should run before it ends automatically."
     OnboardStep.SCHEDULE ->
         "Schedules can start this profile automatically on selected days."
-    OnboardStep.BREAKS ->
-        "Breaks let you pause blocking briefly without ending the whole session."
     OnboardStep.NOTIFICATIONS ->
         "Lock screen updates and reminders can help you manage your session."
     OnboardStep.REVIEW ->
@@ -528,51 +475,6 @@ private fun DomainsStepContent(
 }
 
 @Composable
-private fun FocusDurationStepContent(
-    minutes: Int,
-    onMinutesChange: (Int) -> Unit,
-    strategyId: String,
-) {
-    val cs = MaterialTheme.colorScheme
-    val label = if (strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK) {
-        "Session length"
-    } else {
-        "Focus duration"
-    }
-    OnboardingSettingsCard {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "$minutes minutes",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = cs.onSurface,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Slider(
-                value = minutes.toFloat(),
-                onValueChange = { onMinutesChange(it.roundToInt()) },
-                valueRange = 5f..180f,
-                steps = 34,
-                colors = SliderDefaults.colors(
-                    thumbColor = cs.primary,
-                    activeTrackColor = cs.primary,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
 private fun ScheduleStepContent(
     summary: String,
     onOpenSchedule: () -> Unit,
@@ -584,45 +486,6 @@ private fun ScheduleStepContent(
             onClick = onOpenSchedule,
             showDividerBelow = false,
         )
-    }
-}
-
-@Composable
-private fun BreaksStepContent(
-    minutes: Int,
-    onMinutesChange: (Int) -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    OnboardingSettingsCard {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "$minutes minutes",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = cs.onSurface,
-            )
-            Text(
-                text = "Break length",
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Slider(
-                value = minutes.toFloat(),
-                onValueChange = { onMinutesChange(it.roundToInt()) },
-                valueRange = 5f..60f,
-                steps = 10,
-                colors = SliderDefaults.colors(
-                    thumbColor = cs.primary,
-                    activeTrackColor = cs.primary,
-                ),
-            )
-        }
     }
 }
 
@@ -760,11 +623,6 @@ private fun ReviewStepContent(
         state.domains.size == 1 -> "1 domain"
         else -> "${state.domains.size} domains"
     }
-    val breaksLabel = if (state.strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK) {
-        "${state.breakTimeInMinutes} minutes"
-    } else {
-        "Off"
-    }
     val safeguardsLabel = if (state.enableStrictMode) "Strict" else "Standard"
     val notifParts = buildList {
         if (state.enableLiveActivity) add("Lock screen")
@@ -791,7 +649,6 @@ private fun ReviewStepContent(
             OnboardingReviewRow("Apps", appsLabel)
             OnboardingReviewRow("Domains", domainsLabel)
             OnboardingReviewRow("Schedule", state.schedule.summaryText())
-            OnboardingReviewRow("Breaks", breaksLabel)
             OnboardingReviewRow("Safeguards", safeguardsLabel)
             OnboardingReviewRow("Notifications", notificationsLabel, showDivider = false)
         }

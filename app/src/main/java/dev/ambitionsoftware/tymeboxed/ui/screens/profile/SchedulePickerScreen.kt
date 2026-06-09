@@ -1,6 +1,5 @@
 package dev.ambitionsoftware.tymeboxed.ui.screens.profile
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,22 +20,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -62,17 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import dev.ambitionsoftware.tymeboxed.domain.model.BlockingStrategyId
 import dev.ambitionsoftware.tymeboxed.domain.model.ProfileSchedule
 import dev.ambitionsoftware.tymeboxed.ui.screens.home.BREAK_TIMER_SETTINGS_RANGE
-import dev.ambitionsoftware.tymeboxed.ui.screens.home.FOCUS_TIMER_SETTINGS_RANGE
-import dev.ambitionsoftware.tymeboxed.ui.screens.home.TimerSettingsBottomSheet
-import dev.ambitionsoftware.tymeboxed.ui.screens.home.formatTimerDurationLabel
 import dev.ambitionsoftware.tymeboxed.ui.theme.LocalAccentColor
 import dev.ambitionsoftware.tymeboxed.util.WebsiteUrls
 import java.text.DateFormatSymbols
 import java.util.Calendar
-import kotlin.math.roundToInt
-
 private val calendarWeekdays = listOf(
     Calendar.SUNDAY,
     Calendar.MONDAY,
@@ -108,6 +97,7 @@ private fun fallbackWeekdayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
 
 private val minuteSteps = (0..55 step 5).toList()
 private val hours12 = (1..12).toList()
+private val breakDurationSteps = (BREAK_TIMER_SETTINGS_RANGE.minMinutes..BREAK_TIMER_SETTINGS_RANGE.maxMinutes step BREAK_TIMER_SETTINGS_RANGE.stepMinutes).toList()
 
 /**
  * Full-screen schedule editor — mirrors iOS [SchedulePicker].
@@ -141,7 +131,9 @@ fun SchedulePickerScreen(
 
     var showStartPickers by remember { mutableStateOf(false) }
     var showEndPickers by remember { mutableStateOf(false) }
-    var showFocusLengthPicker by remember { mutableStateOf(false) }
+    var showBreakPicker by remember { mutableStateOf(false) }
+
+    val breakDurationEnabled = uiState.strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK
 
     LaunchedEffect(uiState.profileReady) {
         if (!uiState.profileReady) return@LaunchedEffect
@@ -157,9 +149,14 @@ fun SchedulePickerScreen(
         showEndPickers = false
     }
 
+    LaunchedEffect(breakDurationEnabled) {
+        if (!breakDurationEnabled) showBreakPicker = false
+    }
+
     val start24 = hour12To24(startHour12, startPm)
     val end24 = hour12To24(endHour12, endPm)
     val durationMinutes = durationMinutesBetween(start24, startMinute, end24, endMinute)
+    val breakMinutes = BREAK_TIMER_SETTINGS_RANGE.snap(uiState.breakTimeInMinutes.toFloat())
     val hasDays = selectedDays.isNotEmpty()
     val isValid = hasDays && durationMinutes >= 60
     val validationText = when {
@@ -201,19 +198,6 @@ fun SchedulePickerScreen(
             append("Tymeboxed.app")
             pop()
         }
-    }
-
-    if (showFocusLengthPicker) {
-        TimerSettingsBottomSheet(
-            profileName = uiState.name.ifBlank { "Profile" },
-            range = FOCUS_TIMER_SETTINGS_RANGE,
-            initialMinutes = uiState.timerMinutes,
-            onConfirm = { minutes ->
-                viewModel.onTimerMinutesChange(minutes)
-                showFocusLengthPicker = false
-            },
-            onDismiss = { showFocusLengthPicker = false },
-        )
     }
 
     Scaffold(
@@ -360,23 +344,30 @@ fun SchedulePickerScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            ScheduleSectionLabel("Default Focus session length")
+            ScheduleSectionLabel("Default Break duration")
             ScheduleValueRow(
                 cardBg = cardBg,
-                leftLabel = "Time selector",
-                rightValue = formatMinutesLabel(uiState.timerMinutes),
-                enabled = true,
-                onClick = { showFocusLengthPicker = true },
+                leftLabel = "Break length",
+                rightValue = formatMinutesLabel(breakMinutes),
+                enabled = breakDurationEnabled,
+                onClick = { showBreakPicker = !showBreakPicker },
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            ScheduleSectionLabel("Default Break duration")
-            BreakDurationSliderBox(
-                cardBg = cardBg,
-                minutes = uiState.breakTimeInMinutes,
-                accent = accent,
-                onMinutesChange = viewModel::onBreakTimeChange,
-            )
+            if (!breakDurationEnabled) {
+                Text(
+                    text = "Only available with Forever session with break.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            if (showBreakPicker && breakDurationEnabled) {
+                ScheduleTimePickerCard(cardBg = cardBg) {
+                    DropdownDurationSelector(
+                        minutes = breakMinutes,
+                        onMinutes = viewModel::onBreakTimeChange,
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
             Row(
@@ -394,6 +385,7 @@ fun SchedulePickerScreen(
                         endMinute = 0
                         showStartPickers = false
                         showEndPickers = false
+                        showBreakPicker = false
                         viewModel.updateSchedule(ProfileSchedule.inactive())
                         onBack()
                     }
@@ -442,6 +434,8 @@ private fun ScheduleValueRow(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val labelColor = if (enabled) cs.onSurfaceVariant else cs.onSurfaceVariant.copy(alpha = 0.38f)
+    val valueColor = if (enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.38f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -455,13 +449,13 @@ private fun ScheduleValueRow(
         Text(
             text = leftLabel,
             style = MaterialTheme.typography.bodyLarge,
-            color = cs.onSurfaceVariant,
+            color = labelColor,
         )
         Text(
             text = rightValue,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
-            color = cs.onSurface,
+            color = valueColor,
         )
     }
 }
@@ -484,110 +478,37 @@ private fun ScheduleTimePickerCard(
 }
 
 @Composable
-private fun BreakDurationSliderBox(
-    cardBg: Color,
+private fun DropdownDurationSelector(
     minutes: Int,
-    accent: Color,
-    onMinutesChange: (Int) -> Unit,
+    onMinutes: (Int) -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
-    val range = BREAK_TIMER_SETTINGS_RANGE
-    val snapped = range.snap(minutes.toFloat())
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(cardBg)
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(vertical = 8.dp),
     ) {
-        Text(
-            text = formatMinutesLabel(snapped),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = cs.onSurface,
-        )
-        Text(
-            text = "Break length",
-            style = MaterialTheme.typography.bodyMedium,
-            color = cs.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
+        TextButton(
+            onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            OutlinedIconButton(
-                onClick = {
-                    onMinutesChange((snapped - range.stepMinutes).coerceAtLeast(range.minMinutes))
-                },
-                enabled = snapped > range.minMinutes,
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                border = BorderStroke(1.dp, accent.copy(alpha = 0.6f)),
-                colors = IconButtonDefaults.outlinedIconButtonColors(
-                    contentColor = accent,
-                    disabledContentColor = accent.copy(alpha = 0.35f),
-                ),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Remove,
-                    contentDescription = "Decrease break duration",
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            Slider(
-                value = snapped.toFloat(),
-                onValueChange = { onMinutesChange(range.snap(it)) },
-                valueRange = range.minMinutes.toFloat()..range.maxMinutes.toFloat(),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = accent,
-                    inactiveTrackColor = cs.onSurface.copy(alpha = 0.15f),
-                ),
-            )
-
-            IconButton(
-                onClick = {
-                    onMinutesChange((snapped + range.stepMinutes).coerceAtMost(range.maxMinutes))
-                },
-                enabled = snapped < range.maxMinutes,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(accent),
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = Color(0xFF1C1C1E),
-                    disabledContentColor = Color(0xFF1C1C1E).copy(alpha = 0.4f),
-                ),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Increase break duration",
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            Text(formatMinutesLabel(minutes), color = cs.primary)
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
         ) {
-            Text(
-                text = formatTimerDurationLabel(range.minMinutes),
-                style = MaterialTheme.typography.labelMedium,
-                color = cs.onSurfaceVariant,
-            )
-            Text(
-                text = formatTimerDurationLabel(range.maxMinutes),
-                style = MaterialTheme.typography.labelMedium,
-                color = cs.onSurfaceVariant,
-            )
+            breakDurationSteps.forEach { m ->
+                DropdownMenuItem(
+                    text = { Text(formatMinutesLabel(m)) },
+                    onClick = {
+                        onMinutes(m)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }

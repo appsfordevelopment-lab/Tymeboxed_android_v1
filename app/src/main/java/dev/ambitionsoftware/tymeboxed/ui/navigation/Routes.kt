@@ -13,7 +13,7 @@ object Routes {
     const val IN_APP_BLOCKING = "in_app_blocking"
     const val PERMISSIONS = "permissions"
 
-    /** Foqos-style 9-step profile creation wizard. */
+    /** Foqos-style 7-step profile creation wizard. */
     const val PROFILE_ONBOARD = "profile_onboard/{profileId}"
     fun profileOnboard(profileId: String = "new") = "profile_onboard/$profileId"
 
