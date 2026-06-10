@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -66,6 +67,8 @@ fun BlockedDomainsPickerScreen(
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
     val rowCardBg = if (isDark) Color(0xFF2C2C2E) else Color.White
+    val doneButtonBg = if (isDark) Color(0xFFF2F2F7) else cs.onBackground
+    val doneButtonText = if (isDark) Color(0xFF1C1C1E) else cs.background
 
     val filteredPopular = remember(searchQuery) {
         if (searchQuery.isBlank()) popularBlockedDomains
@@ -104,6 +107,37 @@ fun BlockedDomainsPickerScreen(
                     navigationIconContentColor = cs.onSurface,
                 ),
             )
+        },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(cs.background)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = doneButtonBg,
+                        contentColor = doneButtonText,
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.blocked_domains_done),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         },
     ) { padding ->
         Column(
@@ -202,25 +236,6 @@ fun BlockedDomainsPickerScreen(
                         }
                     }
                 }
-            }
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(vertical = 16.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = cs.onBackground,
-                    contentColor = cs.background,
-                ),
-            ) {
-                Text(
-                    text = stringResource(R.string.blocked_domains_done),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
             }
         }
     }

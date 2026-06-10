@@ -90,4 +90,16 @@ class ProfileRepository @Inject constructor(
         }
         scheduleAlarmScheduler.rescheduleAll()
     }
+
+    /** Persists a new display order for profiles (Foqos-style Edit/Move). */
+    suspend fun reorderProfiles(orderedIds: List<String>) {
+        database.withTransaction {
+            orderedIds.forEachIndexed { index, id ->
+                val existing = profileDao.findById(id) ?: return@forEachIndexed
+                if (existing.order != index) {
+                    profileDao.updateProfile(existing.copy(order = index))
+                }
+            }
+        }
+    }
 }

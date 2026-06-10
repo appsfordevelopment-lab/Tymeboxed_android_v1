@@ -3,6 +3,7 @@ package dev.ambitionsoftware.tymeboxed.ui.screens.profile
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -64,6 +70,9 @@ fun BlockedAppsPickerScreen(
     val state by viewModel.state.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val cs = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+    val doneButtonBg = if (isDark) Color(0xFFF2F2F7) else cs.onBackground
+    val doneButtonText = if (isDark) Color(0xFF1C1C1E) else cs.background
 
     val filtered = remember(state.installedApps, searchQuery) {
         val list = state.installedApps
@@ -93,11 +102,42 @@ fun BlockedAppsPickerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = cs.surface,
+                    containerColor = cs.background,
                     titleContentColor = cs.onSurface,
                     navigationIconContentColor = cs.onSurface,
                 ),
             )
+        },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(cs.background)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = doneButtonBg,
+                        contentColor = doneButtonText,
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.blocked_apps_done),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         },
     ) { padding ->
         Column(

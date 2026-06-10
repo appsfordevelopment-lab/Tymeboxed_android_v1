@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import dev.ambitionsoftware.tymeboxed.domain.model.BlockingStrategyId
 import dev.ambitionsoftware.tymeboxed.domain.model.ProfileSchedule
@@ -131,7 +133,7 @@ fun SchedulePickerScreen(
 
     var showStartPickers by remember { mutableStateOf(false) }
     var showEndPickers by remember { mutableStateOf(false) }
-    var showBreakPicker by remember { mutableStateOf(false) }
+    var breakMenuExpanded by remember { mutableStateOf(false) }
 
     val breakDurationEnabled = uiState.strategyId == BlockingStrategyId.FOCUS_TIMER_BREAK
 
@@ -150,7 +152,7 @@ fun SchedulePickerScreen(
     }
 
     LaunchedEffect(breakDurationEnabled) {
-        if (!breakDurationEnabled) showBreakPicker = false
+        if (!breakDurationEnabled) breakMenuExpanded = false
     }
 
     val start24 = hour12To24(startHour12, startPm)
@@ -350,7 +352,20 @@ fun SchedulePickerScreen(
                 leftLabel = "Break length",
                 rightValue = formatMinutesLabel(breakMinutes),
                 enabled = breakDurationEnabled,
-                onClick = { showBreakPicker = !showBreakPicker },
+                onClick = { if (breakDurationEnabled) breakMenuExpanded = true },
+                dropdownExpanded = breakMenuExpanded,
+                onDismissDropdown = { breakMenuExpanded = false },
+                dropdownContent = {
+                    breakDurationSteps.forEach { m ->
+                        DropdownMenuItem(
+                            text = { Text(formatMinutesLabel(m)) },
+                            onClick = {
+                                viewModel.onBreakTimeChange(m)
+                                breakMenuExpanded = false
+                            },
+                        )
+                    }
+                },
             )
             if (!breakDurationEnabled) {
                 Text(
@@ -359,14 +374,6 @@ fun SchedulePickerScreen(
                     color = cs.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                 )
-            }
-            if (showBreakPicker && breakDurationEnabled) {
-                ScheduleTimePickerCard(cardBg = cardBg) {
-                    DropdownDurationSelector(
-                        minutes = breakMinutes,
-                        onMinutes = viewModel::onBreakTimeChange,
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -385,7 +392,7 @@ fun SchedulePickerScreen(
                         endMinute = 0
                         showStartPickers = false
                         showEndPickers = false
-                        showBreakPicker = false
+                        breakMenuExpanded = false
                         viewModel.updateSchedule(ProfileSchedule.inactive())
                         onBack()
                     }
@@ -432,6 +439,9 @@ private fun ScheduleValueRow(
     rightValue: String,
     enabled: Boolean,
     onClick: () -> Unit,
+    dropdownExpanded: Boolean = false,
+    onDismissDropdown: () -> Unit = {},
+    dropdownContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val labelColor = if (enabled) cs.onSurfaceVariant else cs.onSurfaceVariant.copy(alpha = 0.38f)
@@ -451,12 +461,30 @@ private fun ScheduleValueRow(
             style = MaterialTheme.typography.bodyLarge,
             color = labelColor,
         )
-        Text(
-            text = rightValue,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = valueColor,
-        )
+        if (dropdownContent != null) {
+            Box {
+                Text(
+                    text = rightValue,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = valueColor,
+                )
+                DropdownMenu(
+                    expanded = dropdownExpanded && enabled,
+                    onDismissRequest = onDismissDropdown,
+                    offset = DpOffset(x = (-80).dp, y = 0.dp),
+                ) {
+                    dropdownContent()
+                }
+            }
+        } else {
+            Text(
+                text = rightValue,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = valueColor,
+            )
+        }
     }
 }
 
@@ -474,42 +502,6 @@ private fun ScheduleTimePickerCard(
             .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {
         content()
-    }
-}
-
-@Composable
-private fun DropdownDurationSelector(
-    minutes: Int,
-    onMinutes: (Int) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val cs = MaterialTheme.colorScheme
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-    ) {
-        TextButton(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(formatMinutesLabel(minutes), color = cs.primary)
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            breakDurationSteps.forEach { m ->
-                DropdownMenuItem(
-                    text = { Text(formatMinutesLabel(m)) },
-                    onClick = {
-                        onMinutes(m)
-                        expanded = false
-                    },
-                )
-            }
-        }
     }
 }
 

@@ -61,11 +61,16 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
@@ -112,7 +117,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -130,6 +134,9 @@ import android.content.Context
 import android.os.Build
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.ambitionsoftware.tymeboxed.data.export.SessionDataExporter
+import dev.ambitionsoftware.tymeboxed.data.export.SessionExportSortDirection
+import dev.ambitionsoftware.tymeboxed.data.export.SessionExportTimeZone
 import dev.ambitionsoftware.tymeboxed.data.prefs.ActivityChartType
 import dev.ambitionsoftware.tymeboxed.data.prefs.AppPreferences
 import dev.ambitionsoftware.tymeboxed.data.repository.AuthRepository
@@ -158,6 +165,7 @@ import dev.ambitionsoftware.tymeboxed.service.AppSessionController
 import dev.ambitionsoftware.tymeboxed.service.BlockingStateRestorer
 import dev.ambitionsoftware.tymeboxed.service.ActiveSessionLifecycleCoordinator
 import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCard
+import dev.ambitionsoftware.tymeboxed.ui.components.SettingsCardRow
 import dev.ambitionsoftware.tymeboxed.ui.theme.EmergencyRed
 import dev.ambitionsoftware.tymeboxed.ui.screens.insights.ProfileInsightsScreen
 import dev.ambitionsoftware.tymeboxed.ui.theme.LocalAccentColor
@@ -404,6 +412,41 @@ class HomeViewModel @Inject constructor(
             appSessionController.endSessionCompletely()
             onComplete()
         }
+    }
+
+    fun reorderProfiles(orderedIds: List<String>) {
+        viewModelScope.launch { profileRepository.reorderProfiles(orderedIds) }
+    }
+
+    fun deleteProfile(
+        profileId: String,
+        onError: (String) -> Unit,
+        onSuccess: () -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            runCatching { profileRepository.delete(profileId) }
+                .onSuccess { onSuccess() }
+                .onFailure { onError(it.message ?: "Could not delete profile.") }
+        }
+    }
+
+    suspend fun exportSessionsCsv(
+        profileIds: Set<String>,
+        sortDirection: SessionExportSortDirection,
+        timeZone: SessionExportTimeZone,
+    ): String {
+        if (profileIds.isEmpty()) return SessionDataExporter.exportSessionsCsv(emptyList(), emptyMap())
+        val profiles = profiles.first().filter { it.id in profileIds }
+        val sessions = sessionRepository.getCompletedForProfiles(
+            profileIds = profileIds.toList(),
+            ascending = sortDirection == SessionExportSortDirection.ASCENDING,
+        )
+        return SessionDataExporter.exportSessionsCsv(
+            sessions = sessions,
+            profilesById = profiles.associateBy { it.id },
+            sortDirection = sortDirection,
+            timeZone = timeZone,
+        )
     }
 }
 
@@ -673,8 +716,14 @@ fun HomeScreen(
                     .fillMaxSize()
                     .background(homeBg)
                     .padding(padding)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(if (emptyHome) 12.dp else 24.dp),
+                    .then(
+                        if (emptyHome) {
+                            Modifier
+                        } else {
+                            Modifier.verticalScroll(rememberScrollState())
+                        },
+                    ),
+                verticalArrangement = Arrangement.spacedBy(if (emptyHome) 8.dp else 24.dp),
             ) {
                 Row(
                     modifier = Modifier
@@ -684,8 +733,7 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "Tyme Boxed",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.displaySmall,
                         color = cs.onBackground,
                     )
                     Spacer(modifier = Modifier.weight(1f))
@@ -734,7 +782,19 @@ fun HomeScreen(
                     }
                 }
 
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (emptyHome) {
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            } else {
+                                Modifier.fillMaxWidth()
+                            },
+                        )
+                        .padding(horizontal = 16.dp),
+                ) {
                     if (profiles.isEmpty() && profilesInitialLoading) {
                         // Audit #34: distinguish "still loading from Room" from
                         // "user has no profiles yet". Without this the welcome
@@ -743,6 +803,7 @@ fun HomeScreen(
                         ProfileListLoadingPlaceholder()
                     } else if (profiles.isEmpty()) {
                         GettingStartedEmptyState(
+                            modifier = Modifier.fillMaxSize(),
                             onCreateProfile = onCreateProfile,
                             onOpenFullEditor = onOpenFullProfileEditor,
                         )
@@ -787,6 +848,7 @@ fun HomeScreen(
         if (showProfilesSheet) {
             ProfilesManageFullScreen(
                 profiles = profiles,
+                activeSession = activeSession,
                 onDismiss = { showProfilesSheet = false },
                 onGuidedSetup = {
                     showProfilesSheet = false
@@ -799,6 +861,10 @@ fun HomeScreen(
                 onEditProfile = { id ->
                     showProfilesSheet = false
                     onEditProfile(id)
+                },
+                onReorderProfiles = vm::reorderProfiles,
+                onDeleteProfile = { id, onError ->
+                    vm.deleteProfile(profileId = id, onError = onError)
                 },
             )
         }
@@ -857,121 +923,160 @@ private fun ProfileListLoadingPlaceholder() {
 
 /**
  * Empty home — focus messaging, benefit list, “Getting Started”, and accent CTA.
- * Accent color follows Settings → Appearance (Material [colorScheme.primary]).
+ * Scales type and spacing to the available height so content fills the screen without scrolling.
  */
 @Composable
 private fun GettingStartedEmptyState(
     onCreateProfile: () -> Unit,
     onOpenFullEditor: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
     ) {
-        FocusDropHeroText()
-        Spacer(modifier = Modifier.height(20.dp))
-        FocusBenefitRow(
-            icon = Icons.Outlined.Smartphone,
-            title = "Focus becomes the default",
-            description = "Distraction turns into the effortful choice.",
-        )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 10.dp),
-            color = cs.outline.copy(alpha = 0.25f),
-        )
-        FocusBenefitRow(
-            icon = Icons.Outlined.Schedule,
-            title = "A real step before the scroll",
-            description = "Your brain re-engages before the habit fires.",
-        )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 10.dp),
-            color = cs.outline.copy(alpha = 0.25f),
-        )
-        FocusBenefitRow(
-            icon = Icons.Outlined.Check,
-            title = "Follow-through, automated",
-            description = "2–3x more likely to stick than willpower.",
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = "Getting Started",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = cs.onBackground,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Let's get you started by creating your first profile. " +
-                "You can customize it as much or as little as you'd like.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = cs.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = onCreateProfile,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = cs.primary,
-                contentColor = cs.onPrimary,
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 4.dp,
-                pressedElevation = 2.dp,
-            ),
+        // ~620dp is a typical compact-phone content height; scale up on taller screens.
+        val scale = (maxHeight.value / 620f).coerceIn(0.88f, 1.3f)
+        val sectionGap = (16f * scale).dp
+        val dividerPad = (12f * scale).dp
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(
-                imageVector = Icons.Default.Psychology,
-                contentDescription = null,
-                modifier = Modifier.size(22.dp),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "Create Profile",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FocusDropHeroText(
+                    scale = scale,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = sectionGap),
+                )
+                FocusBenefitRow(
+                    icon = Icons.Outlined.Smartphone,
+                    title = "Focus becomes the default",
+                    description = "Distraction turns into the effortful choice.",
+                    scale = scale,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = dividerPad),
+                    color = cs.outline.copy(alpha = 0.22f),
+                )
+                FocusBenefitRow(
+                    icon = Icons.Outlined.Schedule,
+                    title = "A real step before the scroll",
+                    description = "Your brain re-engages before the habit fires.",
+                    scale = scale,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = dividerPad),
+                    color = cs.outline.copy(alpha = 0.22f),
+                )
+                FocusBenefitRow(
+                    icon = Icons.Outlined.Check,
+                    title = "Follow-through, automated",
+                    description = "2–3x more likely to stick than willpower.",
+                    scale = scale,
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "Getting Started",
+                    fontSize = (24f * scale).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = cs.onBackground,
+                    textAlign = TextAlign.Center,
+                    lineHeight = (30f * scale).sp,
+                )
+                Spacer(modifier = Modifier.height((10f * scale).dp))
+                Text(
+                    text = "Let's get you started by creating your first profile. " +
+                        "You can customize it as much or as little as you'd like.",
+                    fontSize = (16f * scale).sp,
+                    color = cs.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    lineHeight = (22f * scale).sp,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+                Spacer(modifier = Modifier.height((18f * scale).dp))
+                Button(
+                    onClick = onCreateProfile,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height((52f * scale).dp.coerceIn(48.dp, 58.dp)),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = cs.primary,
+                        contentColor = cs.onPrimary,
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 1.dp,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Psychology,
+                        contentDescription = null,
+                        modifier = Modifier.size((22f * scale).dp.coerceIn(20.dp, 26.dp)),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Create Profile",
+                        fontSize = (18f * scale).sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Spacer(modifier = Modifier.height((10f * scale).dp))
+                Text(
+                    text = "Use the full profile editor",
+                    fontSize = (16f * scale).sp,
+                    fontWeight = FontWeight.Medium,
+                    color = cs.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onOpenFullEditor)
+                        .padding(vertical = 4.dp),
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Use the full profile editor",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = cs.primary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpenFullEditor),
-        )
     }
 }
 
 @Composable
-private fun FocusDropHeroText(modifier: Modifier = Modifier) {
+private fun FocusDropHeroText(
+    modifier: Modifier = Modifier,
+    scale: Float = 1f,
+) {
     val cs = MaterialTheme.colorScheme
-    val serifStyle = MaterialTheme.typography.titleMedium.copy(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
+    val introStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = (17f * scale).sp,
         color = cs.onBackground,
-        lineHeight = 26.sp,
+        lineHeight = (24f * scale).sp,
+    )
+    val statsStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = (22f * scale).sp,
+        color = cs.onBackground,
+        lineHeight = (28f * scale).sp,
+    )
+    val taglineStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = (17f * scale).sp,
+        color = cs.onBackground,
+        lineHeight = (24f * scale).sp,
     )
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy((4f * scale).dp),
     ) {
         Text(
             text = "Your focus dropped from",
-            style = serifStyle,
+            style = introStyle,
             textAlign = TextAlign.Center,
         )
         Text(
@@ -984,23 +1089,24 @@ private fun FocusDropHeroText(modifier: Modifier = Modifier) {
                     append("47 sec.")
                 }
             },
-            style = serifStyle,
+            style = statsStyle,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height((4f * scale).dp))
         Text(
             text = buildAnnotatedString {
                 append("One physical tap brings it ")
                 withStyle(
                     SpanStyle(
                         fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Medium,
                         color = cs.primary,
                     ),
                 ) {
                     append("back.")
                 }
             },
-            style = serifStyle,
+            style = taglineStyle,
             textAlign = TextAlign.Center,
         )
     }
@@ -1011,42 +1117,83 @@ private fun FocusBenefitRow(
     icon: ImageVector,
     title: String,
     description: String,
+    inCard: Boolean = false,
+    compact: Boolean = false,
+    scale: Float = 1f,
 ) {
     val cs = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(cs.surface)
-                .border(1.dp, cs.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
+    val useScale = scale != 1f
+    val iconSize = when {
+        useScale -> (48f * scale).dp.coerceIn(44.dp, 56.dp)
+        compact -> 40.dp
+        else -> 44.dp
+    }
+    val iconInner = when {
+        useScale -> (24f * scale).dp.coerceIn(22.dp, 28.dp)
+        compact -> 20.dp
+        else -> 22.dp
+    }
+    val titleStyle = if (useScale) {
+        MaterialTheme.typography.titleMedium.copy(
+            fontSize = (18f * scale).sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = (24f * scale).sp,
+        )
+    } else {
+        MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+    }
+    val descriptionStyle = if (useScale) {
+        MaterialTheme.typography.bodyLarge.copy(
+            fontSize = (16f * scale).sp,
+            lineHeight = (22f * scale).sp,
+        )
+    } else {
+        MaterialTheme.typography.bodyMedium
+    }
+    val rowContent = @Composable {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(
+                if (useScale) (14f * scale).dp else if (compact) 10.dp else 12.dp,
+            ),
+            verticalAlignment = Alignment.Top,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = cs.onSurface,
-                modifier = Modifier.size(22.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(iconSize)
+                    .clip(RoundedCornerShape(if (compact && !useScale) 10.dp else 12.dp))
+                    .background(cs.surfaceVariant.copy(alpha = if (compact && !useScale) 0.55f else 0.65f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = cs.onSurface,
+                    modifier = Modifier.size(iconInner),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = titleStyle,
+                    color = cs.onBackground,
+                )
+                if (!compact || useScale) {
+                    Spacer(modifier = Modifier.height(if (useScale) (4f * scale).dp else 2.dp))
+                }
+                Text(
+                    text = description,
+                    style = descriptionStyle,
+                    color = cs.onSurfaceVariant,
+                    lineHeight = if (compact && !useScale) 18.sp else descriptionStyle.lineHeight,
+                )
+            }
         }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = cs.onBackground,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
-            )
-        }
+    }
+    if (inCard) {
+        SettingsCardRow(content = { rowContent() })
+    } else {
+        rowContent()
     }
 }
 
@@ -1312,24 +1459,40 @@ private fun formatProfileUpdatedAgo(updatedAtMs: Long, nowMs: Long): String {
 @Composable
 private fun ProfilesManageFullScreen(
     profiles: List<Profile>,
+    activeSession: Session?,
     onDismiss: () -> Unit,
     onGuidedSetup: () -> Unit,
     onFullProfileEditor: () -> Unit,
     onEditProfile: (String) -> Unit,
+    onReorderProfiles: (List<String>) -> Unit,
+    onDeleteProfile: (String, (String) -> Unit) -> Unit,
 ) {
     BackHandler(onBack = onDismiss)
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
     val menuBg = if (isDark) Color(0xEC2C2C2E) else Color(0xF5FAFAFA)
     val menuItemColor = if (isDark) Color.White else cs.onSurface
-    var headerMenuExpanded by remember { mutableStateOf(false) }
+    var moreMenuExpanded by remember { mutableStateOf(false) }
+    var addMenuExpanded by remember { mutableStateOf(false) }
+    var isEditMode by remember { mutableStateOf(false) }
+    var showExportData by remember { mutableStateOf(false) }
+    var showDeleteActiveError by remember { mutableStateOf(false) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val canCreateProfiles = activeSession == null
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(1_000)
             nowMs = System.currentTimeMillis()
         }
+    }
+
+    if (showExportData) {
+        ProfileDataExportScreen(
+            profiles = profiles,
+            onDismiss = { showExportData = false },
+        )
+        return
     }
 
     Surface(
@@ -1362,102 +1525,139 @@ private fun ProfilesManageFullScreen(
                         tint = cs.onSurface,
                     )
                 }
-                Box {
-                    Surface(
-                        shape = RoundedCornerShape(28.dp),
-                        color = cs.surface,
-                        shadowElevation = 2.dp,
-                        border = BorderStroke(1.dp, cs.outline.copy(alpha = 0.22f)),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Audit #39: 48dp minimum touch target.
-                            IconButton(
-                                onClick = { headerMenuExpanded = true },
-                                modifier = Modifier.size(48.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreHoriz,
-                                    contentDescription = stringResource(R.string.profiles_manage_menu_more),
-                                    tint = cs.onSurface,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(22.dp)
-                                    .background(cs.outline.copy(alpha = 0.28f)),
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (isEditMode) {
+                        IconButton(
+                            onClick = { isEditMode = false },
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = stringResource(R.string.profiles_manage_done_edit),
+                                tint = cs.primary,
+                                modifier = Modifier.size(26.dp),
                             )
-                            IconButton(
-                                onClick = {
-                                    headerMenuExpanded = false
-                                    onGuidedSetup()
-                                },
-                                modifier = Modifier.size(48.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Add profile",
-                                    tint = cs.onSurface,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
                         }
                     }
-                    DropdownMenu(
-                        expanded = headerMenuExpanded,
-                        onDismissRequest = { headerMenuExpanded = false },
-                        modifier = Modifier.widthIn(min = 260.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        containerColor = menuBg,
-                        shadowElevation = 12.dp,
-                        border = BorderStroke(
-                            1.dp,
-                            cs.outline.copy(alpha = if (isDark) 0.28f else 0.22f),
-                        ),
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = stringResource(R.string.profiles_manage_guided_setup),
-                                    color = menuItemColor,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Assignment,
-                                    contentDescription = null,
-                                    tint = menuItemColor,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            },
-                            onClick = {
-                                headerMenuExpanded = false
-                                onGuidedSetup()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = stringResource(R.string.profiles_manage_full_editor),
-                                    color = menuItemColor,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = null,
-                                    tint = menuItemColor,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            },
-                            onClick = {
-                                headerMenuExpanded = false
-                                onFullProfileEditor()
-                            },
-                        )
+
+                    if (profiles.isNotEmpty() || canCreateProfiles) {
+                        Box {
+                            Surface(
+                                shape = RoundedCornerShape(28.dp),
+                                color = cs.surface,
+                                shadowElevation = 2.dp,
+                                border = BorderStroke(1.dp, cs.outline.copy(alpha = 0.22f)),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (profiles.isNotEmpty()) {
+                                        IconButton(
+                                            onClick = {
+                                                addMenuExpanded = false
+                                                moreMenuExpanded = true
+                                            },
+                                            modifier = Modifier.size(48.dp),
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreHoriz,
+                                                contentDescription = stringResource(
+                                                    R.string.profiles_manage_menu_more,
+                                                ),
+                                                tint = cs.onSurface,
+                                                modifier = Modifier.size(22.dp),
+                                            )
+                                        }
+                                    }
+                                    if (profiles.isNotEmpty() && canCreateProfiles) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(1.dp)
+                                                .height(22.dp)
+                                                .background(cs.outline.copy(alpha = 0.28f)),
+                                        )
+                                    }
+                                    if (canCreateProfiles) {
+                                        IconButton(
+                                            onClick = {
+                                                moreMenuExpanded = false
+                                                addMenuExpanded = true
+                                            },
+                                            modifier = Modifier.size(48.dp),
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = stringResource(
+                                                    R.string.profiles_manage_menu_add,
+                                                ),
+                                                tint = cs.onSurface,
+                                                modifier = Modifier.size(22.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            if (profiles.isNotEmpty()) {
+                                ProfilesManageDropdownMenu(
+                                    expanded = moreMenuExpanded,
+                                    onDismiss = { moreMenuExpanded = false },
+                                    menuBg = menuBg,
+                                    menuItemColor = menuItemColor,
+                                    cs = cs,
+                                    isDark = isDark,
+                                ) {
+                                    ProfilesManageMenuItem(
+                                        text = stringResource(R.string.profiles_manage_edit_move),
+                                        icon = Icons.Default.Edit,
+                                        menuItemColor = menuItemColor,
+                                        onClick = {
+                                            moreMenuExpanded = false
+                                            isEditMode = true
+                                        },
+                                    )
+                                    ProfilesManageMenuItem(
+                                        text = stringResource(R.string.profiles_manage_export_data),
+                                        icon = Icons.Default.Share,
+                                        menuItemColor = menuItemColor,
+                                        onClick = {
+                                            moreMenuExpanded = false
+                                            showExportData = true
+                                        },
+                                    )
+                                }
+                            }
+                            if (canCreateProfiles) {
+                                ProfilesManageDropdownMenu(
+                                    expanded = addMenuExpanded,
+                                    onDismiss = { addMenuExpanded = false },
+                                    menuBg = menuBg,
+                                    menuItemColor = menuItemColor,
+                                    cs = cs,
+                                    isDark = isDark,
+                                ) {
+                                    ProfilesManageMenuItem(
+                                        text = stringResource(R.string.profiles_manage_guided_setup),
+                                        icon = Icons.Default.Assignment,
+                                        menuItemColor = menuItemColor,
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            onGuidedSetup()
+                                        },
+                                    )
+                                    ProfilesManageMenuItem(
+                                        text = stringResource(R.string.profiles_manage_full_editor),
+                                        icon = Icons.Default.Tune,
+                                        menuItemColor = menuItemColor,
+                                        onClick = {
+                                            addMenuExpanded = false
+                                            onFullProfileEditor()
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1492,24 +1692,125 @@ private fun ProfilesManageFullScreen(
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(profiles, key = { it.id }) { profile ->
+                    items(profiles.size, key = { profiles[it].id }) { index ->
+                        val profile = profiles[index]
                         ProfilesManageListCard(
                             profile = profile,
                             nowMs = nowMs,
-                            onClick = { onEditProfile(profile.id) },
+                            isEditMode = isEditMode,
+                            canMoveUp = index > 0,
+                            canMoveDown = index < profiles.lastIndex,
+                            onClick = {
+                                if (!isEditMode) {
+                                    onEditProfile(profile.id)
+                                }
+                            },
+                            onMoveUp = {
+                                if (index > 0) {
+                                    val ids = profiles.map { it.id }.toMutableList()
+                                    ids.add(index - 1, ids.removeAt(index))
+                                    onReorderProfiles(ids)
+                                }
+                            },
+                            onMoveDown = {
+                                if (index < profiles.lastIndex) {
+                                    val ids = profiles.map { it.id }.toMutableList()
+                                    ids.add(index + 1, ids.removeAt(index))
+                                    onReorderProfiles(ids)
+                                }
+                            },
+                            onDelete = {
+                                if (activeSession?.profileId == profile.id) {
+                                    showDeleteActiveError = true
+                                } else {
+                                    onDeleteProfile(profile.id) { /* no-op */ }
+                                }
+                            },
                         )
                     }
                 }
             }
         }
     }
+
+    if (showDeleteActiveError) {
+        AlertDialog(
+            onDismissRequest = { showDeleteActiveError = false },
+            title = { Text("Cannot Delete Active Profile") },
+            text = { Text(stringResource(R.string.profiles_manage_delete_active_error)) },
+            confirmButton = {
+                TextButton(onClick = { showDeleteActiveError = false }) {
+                    Text("OK")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun ProfilesManageDropdownMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    menuBg: Color,
+    menuItemColor: Color,
+    cs: ColorScheme,
+    isDark: Boolean,
+    content: @Composable () -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = Modifier.widthIn(min = 260.dp),
+        shape = RoundedCornerShape(18.dp),
+        containerColor = menuBg,
+        shadowElevation = 12.dp,
+        border = BorderStroke(
+            1.dp,
+            cs.outline.copy(alpha = if (isDark) 0.28f else 0.22f),
+        ),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ProfilesManageMenuItem(
+    text: String,
+    icon: ImageVector,
+    menuItemColor: Color,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = text,
+                color = menuItemColor,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = menuItemColor,
+                modifier = Modifier.size(22.dp),
+            )
+        },
+        onClick = onClick,
+    )
 }
 
 @Composable
 private fun ProfilesManageListCard(
     profile: Profile,
     nowMs: Long,
+    isEditMode: Boolean = false,
+    canMoveUp: Boolean = false,
+    canMoveDown: Boolean = false,
     onClick: () -> Unit,
+    onMoveUp: () -> Unit = {},
+    onMoveDown: () -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val itemsCount = profileRestrictionCount(profile)
@@ -1520,6 +1821,7 @@ private fun ProfilesManageListCard(
         colors = CardDefaults.cardColors(containerColor = cs.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, cs.outline.copy(alpha = 0.14f)),
+        enabled = !isEditMode,
     ) {
         Row(
             modifier = Modifier
@@ -1527,6 +1829,36 @@ private fun ProfilesManageListCard(
                 .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (isEditMode) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    IconButton(
+                        onClick = onMoveUp,
+                        enabled = canMoveUp,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Move up",
+                            tint = if (canMoveUp) cs.onSurface else cs.onSurface.copy(alpha = 0.3f),
+                        )
+                    }
+                    IconButton(
+                        onClick = onMoveDown,
+                        enabled = canMoveDown,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Move down",
+                            tint = if (canMoveDown) cs.onSurface else cs.onSurface.copy(alpha = 0.3f),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = profile.name.ifBlank { "Unnamed Profile" },
@@ -1554,29 +1886,39 @@ private fun ProfilesManageListCard(
                     )
                 }
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(cs.surfaceVariant.copy(alpha = 0.85f)),
-                    contentAlignment = Alignment.Center,
-                ) {
+            if (isEditMode) {
+                IconButton(onClick = onDelete) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
-                        contentDescription = null,
-                        tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete profile",
+                        tint = cs.error,
                     )
                 }
-                Text(
-                    text = "$itemsCount items",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(cs.surfaceVariant.copy(alpha = 0.85f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
+                            contentDescription = null,
+                            tint = cs.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    Text(
+                        text = "$itemsCount items",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

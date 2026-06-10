@@ -71,4 +71,24 @@ interface SessionDao {
         "SELECT COUNT(*) FROM sessions WHERE profileId = :profileId AND endTime IS NOT NULL",
     )
     suspend fun countCompletedForProfile(profileId: String): Int
+
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE profileId IN (:profileIds)
+        AND endTime IS NOT NULL
+        ORDER BY startTime ASC
+        """,
+    )
+    suspend fun getCompletedForProfilesAsc(profileIds: List<String>): List<SessionEntity>
+
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE profileId IN (:profileIds)
+        AND endTime IS NOT NULL
+        ORDER BY startTime DESC
+        """,
+    )
+    suspend fun getCompletedForProfilesDesc(profileIds: List<String>): List<SessionEntity>
 }

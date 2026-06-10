@@ -68,4 +68,17 @@ class SessionRepository @Inject constructor(
      */
     fun observeCompletedSince(sinceMs: Long): Flow<List<Session>> =
         sessionDao.observeCompletedSince(sinceMs).map { list -> list.map { it.toDomain() } }
+
+    suspend fun getCompletedForProfiles(
+        profileIds: List<String>,
+        ascending: Boolean,
+    ): List<Session> {
+        if (profileIds.isEmpty()) return emptyList()
+        val entities = if (ascending) {
+            sessionDao.getCompletedForProfilesAsc(profileIds)
+        } else {
+            sessionDao.getCompletedForProfilesDesc(profileIds)
+        }
+        return entities.map { it.toDomain() }
+    }
 }

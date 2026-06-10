@@ -5,6 +5,7 @@
     <string name="blocked_apps_search_hint">Search apps</string>
     <string name="blocked_apps_loading">Loading apps…</string>
     <string name="blocked_apps_no_match">No apps match your search</string>
+    <string name="blocked_apps_done">Done</string>
     <string name="blocked_domains_picker_title">Blocked websites</string>
     <string name="blocked_domains_search_hint">Search websites</string>
     <string name="blocked_domains_intro">Let\u2019s add few common websites here</string>
@@ -164,7 +165,25 @@
 
     <string name="profiles_manage_guided_setup">Guided Setup</string>
     <string name="profiles_manage_full_editor">Full Profile Editor</string>
+    <string name="profiles_manage_edit_move">Edit/Move</string>
+    <string name="profiles_manage_export_data">Export Data</string>
     <string name="profiles_manage_menu_more">More profile options</string>
+    <string name="profiles_manage_menu_add">Add profile</string>
+    <string name="profiles_manage_done_edit">Done editing</string>
+    <string name="profiles_manage_delete_active_error">You cannot delete a profile that is currently active. Please end the session first.</string>
+    <string name="profiles_export_title">Export Data</string>
+    <string name="profiles_export_profiles_section">Profiles</string>
+    <string name="profiles_export_no_profiles">No profiles yet</string>
+    <string name="profiles_export_sort_section">Sorting</string>
+    <string name="profiles_export_sort_footer">Controls the order of sessions in the CSV based on their start time.</string>
+    <string name="profiles_export_sort_asc">Ascending (oldest first)</string>
+    <string name="profiles_export_sort_desc">Descending (newest first)</string>
+    <string name="profiles_export_timezone_section">Date &amp; Time</string>
+    <string name="profiles_export_timezone_footer">Choose how timestamps are exported. UTC is portable across tools. Local uses your device\'s time zone. All timestamps use ISO 8601.</string>
+    <string name="profiles_export_timezone_utc">UTC</string>
+    <string name="profiles_export_timezone_local">Local</string>
+    <string name="profiles_export_button">Export as CSV</string>
+    <string name="profiles_export_share_title">Export session data</string>
     <string name="profile_edit_schedule_section_title">Schedule</string>
     <string name="profile_edit_set_schedule">Set schedule</string>
     <string name="profile_edit_strategy_section_title">How blocking works</string>

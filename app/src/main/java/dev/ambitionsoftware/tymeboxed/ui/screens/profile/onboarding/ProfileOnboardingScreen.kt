@@ -623,7 +623,6 @@ private fun ReviewStepContent(
         state.domains.size == 1 -> "1 domain"
         else -> "${state.domains.size} domains"
     }
-    val safeguardsLabel = if (state.enableStrictMode) "Strict" else "Standard"
     val notifParts = buildList {
         if (state.enableLiveActivity) add("Lock screen")
         if (state.enableReminder) add("Reminder")
@@ -649,7 +648,6 @@ private fun ReviewStepContent(
             OnboardingReviewRow("Apps", appsLabel)
             OnboardingReviewRow("Domains", domainsLabel)
             OnboardingReviewRow("Schedule", state.schedule.summaryText())
-            OnboardingReviewRow("Safeguards", safeguardsLabel)
             OnboardingReviewRow("Notifications", notificationsLabel, showDivider = false)
         }
         Text(
