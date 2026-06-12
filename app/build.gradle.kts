@@ -43,8 +43,8 @@ val hasReleaseSigningCredentials: Boolean =
         releaseKeyPassword.isNotBlank() &&
         rootProject.file(releaseKeystoreFile).exists()
 
-val appVersionCode = 8
-val appVersionName = "1.1.8"
+val appVersionCode = 10
+val appVersionName = "2.0.0"
 
 android {
     namespace = "dev.ambitionsoftware.tymeboxed"
