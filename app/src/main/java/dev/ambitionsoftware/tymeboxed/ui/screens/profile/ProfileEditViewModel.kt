@@ -19,6 +19,7 @@ import dev.ambitionsoftware.tymeboxed.data.repository.ProfileRepository
 import dev.ambitionsoftware.tymeboxed.data.repository.SessionRepository
 import dev.ambitionsoftware.tymeboxed.service.ActiveSessionLifecycleCoordinator
 import dev.ambitionsoftware.tymeboxed.service.BlockingStateRestorer
+import dev.ambitionsoftware.tymeboxed.service.DomainBlocking
 import dev.ambitionsoftware.tymeboxed.service.SessionReminderScheduler
 import java.util.UUID
 import javax.inject.Inject
@@ -266,61 +267,37 @@ class ProfileEditViewModel @Inject constructor(
         }
     }
 
-    fun onAddDomain(domain: String) {
-        val normalized = normalizeDomainInput(domain)
+    fun onAddDomain(domain: String): Boolean {
+        val normalized = DomainBlocking.normalize(domain)
         if (normalized == null) {
             _state.update {
                 it.copy(errorMessage = "Enter a valid domain like example.com")
             }
-            return
+            return false
         }
+        var added = false
         _state.update { s ->
-            if (s.domains.contains(normalized)) {
-                s.copy(errorMessage = null)
-            } else if (s.domains.size >= MAX_DOMAINS_PER_PROFILE) {
-                s.copy(errorMessage = "You can block at most $MAX_DOMAINS_PER_PROFILE domains per profile")
-            } else {
-                s.copy(domains = s.domains + normalized, errorMessage = null)
+            when {
+                s.domains.contains(normalized) -> {
+                    added = true
+                    s.copy(errorMessage = null)
+                }
+                s.domains.size >= MAX_DOMAINS_PER_PROFILE -> {
+                    s.copy(errorMessage = "You can block at most $MAX_DOMAINS_PER_PROFILE domains per profile")
+                }
+                else -> {
+                    added = true
+                    s.copy(domains = s.domains + normalized, errorMessage = null)
+                }
             }
         }
+        return added
     }
 
-    /**
-     * Strips scheme / path / `www.` and enforces a conservative RFC-1035-like
-     * format. Rejects empty input, oversize labels, leading/trailing dashes,
-     * and obvious junk so a stray paste like `"  https://x"` or `"my email"`
-     * doesn't enter the block list (audit #25: no domain input validation).
-     *
-     * Returns the canonical hostname (lower-case, no scheme, no path) when
-     * valid, else `null`.
-     */
-    private fun normalizeDomainInput(raw: String): String? {
-        val trimmed = raw.trim().lowercase()
-        if (trimmed.isBlank()) return null
-        if (trimmed.length > MAX_DOMAIN_LENGTH) return null
-
-        // Strip scheme + path / query / fragment if the user pasted a URL.
-        val noScheme = trimmed
-            .removePrefix("https://")
-            .removePrefix("http://")
-            .substringBefore('/')
-            .substringBefore('?')
-            .substringBefore('#')
-            .removePrefix("www.")
-
-        if (noScheme.isBlank()) return null
-        if (noScheme.length > MAX_DOMAIN_LENGTH) return null
-        // Must contain a TLD (a single bare word is never a real domain).
-        if (!noScheme.contains('.')) return null
-        // Strict label format: letters/digits/hyphens, no leading/trailing hyphen,
-        // each label 1..63 chars; allow a trailing dot for FQDNs.
-        val core = noScheme.trimEnd('.')
-        if (core.isBlank()) return null
-        val labelRegex = Regex("^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
-        for (label in core.split('.')) {
-            if (!labelRegex.matches(label)) return null
+    fun clearDomainError() {
+        _state.update { s ->
+            if (s.errorMessage != null) s.copy(errorMessage = null) else s
         }
-        return core
     }
 
     fun onRemoveDomain(domain: String) {
@@ -517,10 +494,8 @@ class ProfileEditViewModel @Inject constructor(
 
     companion object {
         private const val STATE_KEY_FORM = "profile_edit_form_v1"
-        /** RFC 1035: a full DNS name can be up to 253 characters. */
-        private const val MAX_DOMAIN_LENGTH = 253
         /** Soft cap so users can't accumulate runaway block lists that bloat the profile row. */
-        private const val MAX_DOMAINS_PER_PROFILE = 250
+        const val MAX_DOMAINS_PER_PROFILE = 250
     }
 }
 

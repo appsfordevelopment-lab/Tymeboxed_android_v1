@@ -6,7 +6,15 @@
     <string name="blocked_apps_loading">Loading apps…</string>
     <string name="blocked_apps_no_match">No apps match your search</string>
     <string name="blocked_apps_done">Done</string>
-    <string name="blocked_domains_picker_title">Blocked websites</string>
+    <string name="blocked_domains_picker_title">Block Domains</string>
+    <string name="blocked_domains_add_section">Add Domain</string>
+    <string name="blocked_domains_add_hint">Enter domain (e.g., example.com)</string>
+    <string name="blocked_domains_add_footer">Enter a domain (e.g., reddit.com, facebook.com, instagram.com). This will also block all subpaths (e.g., reddit.com/r/popular) automatically.</string>
+    <string name="blocked_domains_add_cd">Add domain</string>
+    <string name="blocked_domains_list_section">Blocked Domains</string>
+    <string name="blocked_domains_count_fmt">%1$d/%2$d</string>
+    <string name="blocked_domains_empty">No domains added</string>
+    <string name="blocked_domains_limit_footer">You can add up to %1$d domains per profile. Add domains that you want to restrict during sessions.</string>
     <string name="blocked_domains_search_hint">Search websites</string>
     <string name="blocked_domains_intro">Let\u2019s add few common websites here</string>
     <string name="blocked_domains_popular_section">Popular websites</string>
